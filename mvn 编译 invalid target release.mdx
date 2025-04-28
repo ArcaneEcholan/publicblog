@@ -1,0 +1,237 @@
+---
+title: "$ mvn compile: invalid target release？"
+date: '2025-04-21'
+tags: ['java', 'maven']
+draft: false
+summary:
+---
+
+如果使用以下 pom 配置编译项目，有概率会得到报错： `invalid target release: 11`。
+
+
+```xml
+<build>
+  <plugins>
+    <plugin>
+      <artifactId>maven-compiler-plugin</artifactId>
+      <version>3.10.1</version>
+      <configuration>
+        <source>11</source>
+        <target>11</target>
+      </configuration>
+    </plugin>
+  </plugins>
+</build>
+```
+
+这个报错跟 maven 使用的 javac 版本有关。
+
+## javac
+
+这个错误跟 maven 及其插件本身无关，即使使用 javac 命令编译，也可能复现这个错误。
+
+准备 java 文件：
+
+```java
+public class HelloWorld {
+    public static void main(String[] args) {
+        System.out.println("Hello World");
+    }
+}
+```
+
+使用 javac 8 进行编译：
+
+```shell
+$ javac -version
+
+javac 1.8.0_432
+
+$ javac -target 11 HelloWorld.java
+
+javac: invalid target release: 11
+Usage: javac <options> <source files>
+use -help for a list of possible options
+```
+
+如果使用 javac 11，再指定 -target 11，则不会出现该报错。
+
+```shell
+$ javac -version
+
+javac 11.0.25
+
+$ javac -target 11 HelloWorld.java
+
+# compile success
+```
+
+此时，你甚至可以指定 -target 8，只要没有使用超过 java8 的语法，编译仍然能通过。
+
+```shell
+$ javac -target 8 HelloWorld.java
+
+# compile success
+```
+
+## `javac -target`
+
+要看下 javac 说明了。
+
+```
+$ man javac
+
+...
+       --target release or -target release
+              Generates class files suitable for the  specified  Java  SE
+              release.   The  supported values of release are the current
+              Java SE release and a limited number of previous  releases,
+              detailed in the command-line help.
+...
+```
+
+这下知道了，一个版本的 javac 可以支持解析低于该版本的 java 语法。
+
+比如:
+
+* javac 17 支持以 java17， java11， java8 ... 对源代码进行编译。
+* javac 11 支持以 java11， java8 ... 对源代码进行编译。
+* javac 8 支持以 java8 ... 对源代码进行编译。
+
+而如果使用 javac 8 以 -target 11 为目标去编译，则会出现 `invalid target release: 11` 报错。
+
+那怎么让 maven 用指定版本的 javac 去编译呢？
+
+
+## 如何让 maven 使用指定 javac 进行编译？
+
+可以借用 maven 插件 Maven-Compiler-Plugin，同时通过换用不同的版本的 JDK 运行 Maven，即可指定编译使用的默认 javac 版本编译源代码。
+
+[Maven-Compiler-Plugin 源码](https://github.com/apache/maven-compiler-plugin/blob/7d44073616fcf93eb0c5f4aa43c3511da695a778/src/main/java/org/apache/maven/plugin/compiler/AbstractCompilerMojo.java#L1070)
+
+```java
+if (compilerId == null) {
+    compilerId = DEFAULT_EXECUTABLE;
+    final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+    if (compiler != null) {
+        return compiler;
+    }
+}
+```
+
+Maven 默认使用 `ToolProvider.getSystemJavaCompiler()` 提供的编译器实例。
+
+但是 `ToolProvider.getSystemJavaCompiler()` 是什么？
+
+> Returns the Java programming language compiler provided with this platform. --注释
+
+`this platform` 指的是 **运行当前 java 程序**（这种语境下也就是 Maven ）**的** JVM。
+
+比如：
+* 如果使用 openjdk8 启动 maven，`ToolProvider.getSystemJavaCompiler()` 就是 javac 8。
+* 如果使用 openjdk11 启动 maven，`ToolProvider.getSystemJavaCompiler()` 就是 javac 11。
+
+## 通过不同的 JAVA_HOME 运行 Maven
+
+看看 mvn 命令的实现（其本质是个shell 脚本）：
+
+[mvn-src1](https://github.com/apache/maven/blob/08177a38eb86cac7b7d14d788003cad6b140fe2e/apache-maven/src/assembly/maven/bin/mvn#L91)
+
+[mvn-src2](https://github.com/apache/maven/blob/08177a38eb86cac7b7d14d788003cad6b140fe2e/apache-maven/src/assembly/maven/bin/mvn#L241)
+
+```sh
+if [ -z "$JAVA_HOME" ]; then
+  JAVACMD="`command -v java`"
+else
+  JAVACMD="$JAVA_HOME/bin/java"
+fi
+
+exec "$JAVACMD" ...
+```
+
+平时常用的 mvn 命令，实际上是使用了 JAVA_HOME 指定的 jdk 去启动 maven。
+
+因此，更换 JAVA_HOME 即可指定 Maven 的 Java 运行时。
+
+例如，指定使用 openjdk8 运行 maven：
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+mvn compile
+```
+
+指定使用 openjdk11 运行 maven：
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+mvn compile
+```
+
+---
+
+## 除了指定 JAVA_HOME，还有其他办法指定 javac 的版本吗？
+
+可以的，maven compiler plugin 提供了 fork 选项。
+
+
+[maven compiler plugin 源码](https://github.com/apache/maven-compiler-plugin/blob/7d44073616fcf93eb0c5f4aa43c3511da695a778/src/main/java/org/apache/maven/plugin/compiler/AbstractCompilerMojo.java#L1052)
+
+```java
+if (fork) {
+    if (executable == null) {
+        executable = DEFAULT_EXECUTABLE;
+    }
+    return new ForkedCompiler(this);
+}
+```
+
+
+
+在 fork 开启时，可以通过指定 executable 去指定 javac 。
+
+而 [DEFAULT_EXECUTABLE](https://github.com/apache/maven-compiler-plugin/blob/7d44073616fcf93eb0c5f4aa43c3511da695a778/src/main/java/org/apache/maven/plugin/compiler/AbstractCompilerMojo.java#L105) 默认即为 `which javac`
+
+
+
+```java
+private static final String DEFAULT_EXECUTABLE = "javac";
+```
+
+使用 fork 和 executable 指定 javac 的完整写法：
+
+```xml
+<build>
+  <plugins>
+    <plugin>
+      <artifactId>maven-compiler-plugin</artifactId>
+      <version>3.10.1</version>
+      <configuration>
+        <source>11</source>
+        <target>11</target>
+
+        <!--region start: add fork to specify javac manually-->
+        <fork>true</fork>
+        <executable>/usr/lib/jvm/java-11-openjdk-amd64/bin/javac</executable>
+        <!--region end-->
+
+      </configuration>
+    </plugin>
+  </plugins>
+</build>
+```
+
+---
+
+## 小结
+
+Maven 默认使用启动 JVM 附带的 javac 作为编译器对项目进行编译，要想控制它，用 JAVA_HOME 或使用 maven compiler plugin 的 fork+executable 选项。
+
+---
+
+## 后续
+
+想研究一下 Maven Toolchains 的用法，感觉 fork 不是优雅的方案。
+
+---
+
+# end.

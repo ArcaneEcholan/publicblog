@@ -1,5 +1,5 @@
 ---
-title: mvn compile 到底用的是哪个版本的 JDK？
+title: Maven: invalid target release？
 date: '2025-04-21'
 tags: ['java', 'maven']
 draft: false
@@ -7,6 +7,72 @@ summary:
 ---
 
 ## 起因
+
+如果 Maven 使用 jdk8，并通过以下插件编译，大概率会得到  `invalid target release: 11`
+
+```xml
+<build>
+  <plugins>
+    <plugin>
+      <artifactId>maven-compiler-plugin</artifactId>
+      <version>3.10.1</version>
+      <configuration>
+        <source>11</source>
+        <target>11</target>
+      </configuration>
+    </plugin>
+  </plugins>
+</build>
+```
+
+这个错误笔者遇到过不止一次了。
+
+其实这个错误跟 maven 及其插件无关，因为即使只使用 javac 命令编译，也可能复现这个错误。
+
+```shell
+$ javac -version
+
+javac 1.8.0_432
+
+$ javac -target 11 HelloWorld.java
+
+javac: invalid target release: 11
+Usage: javac <options> <source files>
+use -help for a list of possible options
+```
+
+如果使用 javac 11，再指定 -target 11，则不会出现该报错。
+
+此时，你甚至可以指定 -target 8，只要没有使用超过 java8 的语法，编译仍然能通过。
+
+
+要看下 javac 说明了。
+
+```
+$ man javac
+
+...
+       --target release or -target release
+              Generates class files suitable for the  specified  Java  SE
+              release.   The  supported values of release are the current
+              Java SE release and a limited number of previous  releases,
+              detailed in the command-line help.
+...
+```
+
+这下知道了，一个版本的 javac 可以支持低于该版本的 java 语法的编译。
+
+比如，javac 17 支持以 java17， java11， java8 ... 对源代码进行编译。
+比如，javac 11 支持以 java11， java8 ... 对源代码进行编译。
+比如，javac 8 支持以 java8 ... 对源代码进行编译。
+
+而如果使用 javac 8 以 java11 的目标去编译，则会出现 `invalid target release: 11` 报错。
+
+
+
+
+
+
 
 最近想搞清楚一件事：
 

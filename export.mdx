@@ -1,0 +1,56 @@
+---
+title: "export?"
+date: '2025-04-24'
+tags: ['shell', 'linux']
+draft: false
+summary:
+---
+
+## var=foo command options
+
+[Shell Simple Commands](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_09_01)
+
+变量 var=foo 只对 command options 生效，不会影响到当前 shell 环境（比如后续执行的命令）。
+
+```shell
+$ var=foo sh -c 'echo $var'
+
+# foo
+
+$ echo $var
+
+# (empty output)
+```
+
+## export var=foo; command options; unset var;
+
+经常看到的 export 用法：
+
+```
+export var=foo; command options; command1 options1; unset var;
+```
+
+[Shell export](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#export)
+
+>The shell shall give the export attribute to the variables corresponding to the specified names, which shall cause them to be in the environment of subsequently executed commands. If the name of a variable is followed by = word, then the value of that variable shall be set to word.
+
+也就是说，export 会标记每个变量复制语句中被复制的变量，以便将其传递给当前 shell 环境中后续命令的环境（这意味着这些变量可以从后续命令的环境变量中读取到）。
+
+简而言之，如果变量被 export 了，则该 shell 运行的任何命令都将在其环境变量中继承该变量。
+
+```shell
+$ export var=foo; sh -c 'echo $var'
+
+# foo
+
+$ echo $var
+
+# foo
+```
+
+总之，通过环境变量传递信息给一个程序，有两种方法
+
+* `export var=foo; command options; unset var;`
+* `var=foo command options`
+
+这两种方法都不会影响到 shell 环境（当然，第一种方法要保证 unset var 被执行了，否则会影响到后续执行的命令）

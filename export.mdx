@@ -6,23 +6,69 @@ draft: false
 summary:
 ---
 
-## var=foo command options
+通过 **环境变量** 传递参数，是一种比较简易、标准的方法。
 
-[Shell Simple Commands](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_09_01)
+比如，通过环境变量参数化 docker 容器是很常见的（比如 [dockerhub-mysql](https://hub.docker.com/_/mysql)
+）。
 
-变量 var=foo 只对 command options 生效，不会影响到当前 shell 环境（比如后续执行的命令）。
+再比如，下面这个启动 _express server_ 的命令也很常用：
 
 ```shell
-$ var=foo sh -c 'echo $var'
+export PORT=8080
+node app.js
+```
 
-# foo
+```js
+// app.js
+const express = require('express')
+const app = express()
+
+const port = process.env.PORT || 3000
+
+app.get('/', (req, res) => res.send('hello'))
+
+app.listen(port, () => {
+ console.log(`server listening on port ${port}`)
+})
+```
+
+各大语言平台都有对环境变量的支持， java 有 System.getenv(), node 有 [process.env](https://nodejs.org/api/process.html#processenv) ...
+
+通过环境变量传递信息给一个进程有两种方法
+
+* `var=foo command options`
+* `export var=foo; command options; unset var;`
+
+这两种方法都不会影响到 shell 环境（当然，第一种方法要保证 unset var 被执行了，否则会影响到后续执行的命令）
+
+## var=foo command options
+
+[Shell Simple Commands](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_09_01) 记载到：
+
+> * If no command name results, variable assignments shall affect the current execution environment.
+> * the variable assignments ... shall not affect the current execution environment ...
+> * ......
+
+[man-environ](https://man7.org/linux/man-pages/man7/environ.7.html ) 当中亦有记载：
+
+>[Bourne-style](https://en.wikipedia.org/wiki/Bourne_shell)  shells support the syntax: NAME=value command
+
+变量 var=foo 只对其后 command options 生效，不会影响到当前 shell 环境（比如后续执行的命令）。（var=foo 这种使用方式在正式文档中有很多其他规定，但是日常使用的场景下，只需要记住上述规则即可）
+
+```shell
+# var 变量的赋值只针对 sh 命令有效
+$ var=foo sh -c 'echo $var'
+# output: foo
 
 $ echo $var
-
-# (empty output)
+# output: (empty output)
 ```
 
 ## export var=foo; command options; unset var;
+
+[Shell export](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#export)
+
+>The shell shall give the export attribute to the variables corresponding to the specified names, which shall cause them to be in the environment of subsequently executed commands.
 
 经常看到的 export 用法：
 
@@ -30,13 +76,7 @@ $ echo $var
 export var=foo; command options; command1 options1; unset var;
 ```
 
-[Shell export](https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#export)
-
->The shell shall give the export attribute to the variables corresponding to the specified names, which shall cause them to be in the environment of subsequently executed commands. If the name of a variable is followed by = word, then the value of that variable shall be set to word.
-
-也就是说，export 会标记每个变量复制语句中被复制的变量，以便将其传递给当前 shell 环境中后续命令的环境（这意味着这些变量可以从后续命令的环境变量中读取到）。
-
-简而言之，如果变量被 export 了，则该 shell 运行的任何命令都将在其环境变量中继承该变量。
+`export` 会标记赋值语句中的变量，将其传递给 **当前 shell 中** 后续命令的环境。
 
 ```shell
 $ export var=foo; sh -c 'echo $var'
@@ -47,10 +87,3 @@ $ echo $var
 
 # foo
 ```
-
-总之，通过环境变量传递信息给一个程序，有两种方法
-
-* `export var=foo; command options; unset var;`
-* `var=foo command options`
-
-这两种方法都不会影响到 shell 环境（当然，第一种方法要保证 unset var 被执行了，否则会影响到后续执行的命令）

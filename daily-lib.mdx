@@ -1,0 +1,148 @@
+---
+title: "每日一库: python watchdog"
+date: '2025-05-13'
+tags: ['python']
+draft: false
+summary:
+---
+
+https://pypi.org/project/watchdog/
+
+```shell
+pip install watchdog
+```
+
+以下脚本监听本地文件夹的“新建文件”事件，并把新建文件的内容拷贝到剪贴板。
+
+
+脚本附上：
+
+```python
+
+#!/usr/bin/env python3
+import pyperclip
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+import time
+from typing import Callable, List, Dict, Optional
+
+
+class DirectoryWatcher:
+    def __init__(self):
+        self.callback = None
+        self.watched_folder = None
+
+    def register_folder(self, folder_path: str):
+        """Register the target folder to watch"""
+        self.watched_folder = folder_path
+
+    def on_dir_change(self, callback: Callable[[Dict[str, List[str]]], None]):
+        """Set the callback for directory changes"""
+        self.callback = callback
+
+    def start(self):
+        """Start watching the directory"""
+        if not self.watched_folder:
+            raise ValueError("No folder registered. Call register_folder() first.")
+        if not self.callback:
+            raise ValueError("No callback set. Call on_dir_change() first.")
+
+        class FileEventRecverAndDispatcher(FileSystemEventHandler):
+            """
+            listens on file change events, cache them and pocess them in batch mode
+            """
+
+            def __init__(self, callback):
+                self.callback = callback  # function handles the batch events
+                self.last_events = (
+                    {  # stores the latest batch of fsevents by type
+                        "created": [],
+                        "modified": [],
+                        "deleted": [],
+                        "moved": [],
+                    }
+                )
+
+            def dispatch_events(self):
+                """
+                flush and process all events stored in batch
+                """
+                if any(self.last_events.values()):
+                    self.callback(self.last_events)
+                    self.last_events = {k: [] for k in self.last_events}
+
+            def on_created(self, event):
+                """
+                override method
+                """
+                if not event.is_directory:
+                    self.last_events["created"].append(event.src_path)
+
+            def on_modified(self, event):
+                """
+                override method
+                """
+                if not event.is_directory:
+                    self.last_events["modified"].append(event.src_path)
+
+            def on_deleted(self, event):
+                """
+                override method
+                """
+                if not event.is_directory:
+                    self.last_events["deleted"].append(event.src_path)
+
+            def on_moved(self, event):
+                """
+                override method
+                """
+                if not event.is_directory:
+                    self.last_events["moved"].append((event.src_path, event.dest_path))
+
+        observer = Observer()
+        evtDispatcher = FileEventRecverAndDispatcher(self.callback)
+        observer.schedule(evtDispatcher, self.watched_folder, recursive=True)
+        # async
+        observer.start()
+
+        # sync
+        try:
+            while True:
+                time.sleep(0.5)
+                evtDispatcher.dispatch_events()
+        except KeyboardInterrupt:
+            observer.stop()
+        observer.join()
+
+
+if __name__ == "__main__":
+    watcher = DirectoryWatcher()
+
+    def my_callback(changes):
+        for change_type, files in changes.items():
+            if files:
+                if len(files) == 1 and change_type == "created":
+                    the_file = files[0]
+                    file = open(the_file, "r")
+                    content = file.read()
+                    file.close()
+
+                    print(
+                        f"file creation detected, put content into clipboard: {content}"
+                    )
+                    print("check your clipboard")
+                    pyperclip.copy(content)
+
+    watcher.register_folder(".")
+    watcher.on_dir_change(my_callback)
+    watcher.start()
+
+```
+
+启动脚本后, 尝试执行以下命令：
+
+```
+echo "Hello My Friend" > ./new_file
+```
+
+找任意输入框，粘贴，观察输出, 应该能看到 "Hello My Friend"。

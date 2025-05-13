@@ -1,0 +1,51 @@
+---
+title: "Python 趣事：单元素 tuple"
+date: "2025-05-13"
+tags: ["python"]
+draft: false
+summary:
+---
+
+这段代码让我疑惑地挠头，一个简单的元组定义怎么还被玩出了花？
+
+```py
+x = ()
+print(type(x))
+# tuple
+
+x = (1)
+print(type(x))
+# int
+
+x = (1,)
+print(type(x))
+# tuple
+```
+
+先说明，实际上没有"单元素元组" 这个定义，只是没看到官方定义，而且看到中文社区有人这么叫。
+
+括号可以整体作为一个表达式（在其他语言也一样），但在 python 里 tuple 也是用括号定义的。
+
+* 长度为 0 好说，空的表达式能计算出什么值呢？不能。
+
+* 长度大于 1 也好说，因为除了括号之外还有逗号参与，以此与表达式区分）。
+
+* 而在列表长度为 1 时，表达式和元组从语法层面上完全无法区分。
+
+所以 [python](https://docs.python.org/3/reference/expressions.html#expression-lists) 语法定义里是这样写的：
+
+> an expression list containing at least one comma yields a tuple
+
+> A trailing comma is required only to create a one-item tuple, such as 1,; it is optional in all other cases. A single expression without a trailing comma doesn’t create a tuple, but rather yields the value of that expression. (To create an empty tuple, use an empty pair of parentheses: ().)
+
+。这段定义说明白了:
+
+- 至少包含一个逗号的是元组
+- 又特别点出了单个元素（one-item）的特殊情况（弥补漏洞）
+- 还特意备注了括号里没有任何元素的情况。
+
+**总结就是**：
+
+- 括号，元素，逗号定义元组
+- 只有一个元素时，加一个逗号与表达式区分
+- 没有元素时，是一个空元组

@@ -1,0 +1,58 @@
+---
+title: "网卡速率实时监控脚本"
+date: '2025-05-13'
+tags: ['linux', 'shell']
+draft: false
+summary:
+---
+
+调研过其他方案，比如nload，bmon，vnstat，但是受限于运行的平台（aarch64，没法联网，没有工具链），都无法使用。
+
+于是使用最简单的shell脚本。
+
+无记录持久化功能，适合临时检查网卡速率。
+
+netrate.sh
+
+```shell
+#!/bin/sh
+
+# usage: ./netrate.sh [interface] [interval]
+# example: ./netrate.sh eth0 2
+
+iface="${1:-eth0}"
+interval="${2:-1}"
+
+if [ ! -d "/sys/class/net/$iface" ]; then
+  echo "error: interface '$iface' not found"
+  exit 1
+fi
+
+echo "monitoring $iface every ${interval}s (Ctrl+C to stop)"
+echo
+
+while true; do
+  rx1=$(cat "/sys/class/net/$iface/statistics/rx_bytes")
+  tx1=$(cat "/sys/class/net/$iface/statistics/tx_bytes")
+  sleep "$interval"
+  rx2=$(cat "/sys/class/net/$iface/statistics/rx_bytes")
+  tx2=$(cat "/sys/class/net/$iface/statistics/tx_bytes")
+  rx_rate=$(( (rx2 - rx1) / interval / 1024 ))
+  tx_rate=$(( (tx2 - tx1) / interval / 1024 ))
+
+  printf "[%s] RX: %6d KB/s  TX: %6d KB/s\n" "$(date '+%H:%M:%S')" "$rx_rate" "$tx_rate"
+done
+
+```
+
+使用示例：
+
+```shell
+# 默认监控 eth0
+./netrate.sh
+
+# 指定监控网卡和监控速率
+./netrate.sh eno1 1
+```
+
+

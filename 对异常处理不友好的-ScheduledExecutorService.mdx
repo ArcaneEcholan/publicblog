@@ -1,0 +1,152 @@
+---
+title: "对异常处理不友好的 ScheduledExecutorService"
+date: '2025-05-14'
+tags: ['java']
+draft: false
+summary:
+---
+
+# 【深坑警告】Java 的 `ScheduledExecutorService`： 任务抛出异常导致定时任务停止
+
+如果你用的是 `ScheduledExecutorService`，一个任务中抛出异常导致定时任务停止（仅影响当前抛出异常的任务）
+
+本文对比：
+- `ScheduledExecutorService` 的坑点与源码分析
+- 等位替代：Spring 中 `ThreadPoolTaskScheduler` 的底层调度机制
+- 安全写法建议
+
+---
+
+## `ScheduledExecutorService` 的问题：异常导致调度中断
+
+### 示例代码
+
+```java
+ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+
+executor.scheduleAtFixedRate(() -> {
+    System.out.println("running task");
+    throw new RuntimeException("boom");
+}, 0, 2, TimeUnit.SECONDS);
+```
+
+输出如下：
+
+```
+running task
+Exception in thread ...
+// 沉默了，再无任何执行
+```
+
+---
+
+### 为何任务中断了？
+
+来看官方源码：
+
+[源码位置：JDK 11 `java.util.concurrent.ScheduledThreadPoolExecutor.ScheduledFutureTask#run`](https://github.com/openjdk/jdk/blob/da75f3c4ad5bdf25167a3ed80e51f567ab3dbd01/src/java.base/share/classes/java/util/concurrent/ScheduledThreadPoolExecutor.java#L305)
+
+```java
+public void run() {
+    boolean periodic = isPeriodic();
+    if (!canRunInCurrentRunState(periodic))
+        cancel(false);
+    else if (!periodic)
+        ScheduledFutureTask.super.run();
+    else if (ScheduledFutureTask.super.runAndReset()) // ⚠️ 异常在这里
+        requeue();
+}
+```
+
+关键点在 `runAndReset()` 内部，会调用你的 `Runnable.run()`。如果你抛出异常，它不会被捕获，从而不会 `requeue()`，导致任务**永不再调度**。
+
+---
+
+###  解决方案
+
+**写法1：在任务中手动捕获并处理异常**
+
+```java
+executor.scheduleAtFixedRate(() -> {
+    try {
+        System.out.println("task running");
+        throw new RuntimeException("fail");
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}, 0, 1, TimeUnit.SECONDS);
+```
+
+**写法2：在线程池做全局异常处理设置**
+
+自定义 `ThreadFactory` 添加 `UncaughtExceptionHandler`（仅做兜底日志）**
+
+```java
+ThreadFactory factory = r -> {
+    Thread t = new Thread(r);
+    t.setUncaughtExceptionHandler((thread, ex) ->
+        System.err.println("Uncaught exception: " + ex.getMessage()));
+    return t;
+};
+ScheduledExecutorService executor = Executors.newScheduledThreadPool(1, factory);
+```
+
+注意：线程异常后仍然会退出，**`UncaughtExceptionHandler` 不会重启任务调度。**
+
+---
+
+## Spring 的 `ScheduledTaskRegistrar` 更安全
+
+Spring的 `@Scheduled` 定时任务注解的底层是基于 `TaskScheduler` 的。
+
+你可以不用注解，使用原生类手动注册任务：
+
+```java
+ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+scheduler.setPoolSize(2);
+scheduler.setThreadNamePrefix("my-task-");
+scheduler.initialize();
+```
+
+---
+
+###  Spring 的安全机制
+
+Spring 使用的是 `ReschedulingRunnable`，其父类内部有异常捕获机制：
+
+```java
+public void run() {
+    try {
+        this.delegate.run();
+    }
+    catch (Throwable ex) {
+        this.errorHandler.handleError(ex);
+    }
+}
+```
+
+源码链接（Spring Framework 3.x）：
+
+> [`DelegatingErrorHandlingRunnable` in Spring](https://github.com/spring-projects/spring-framework/blob/4f9593da1c4deed6b00eff00e28ab9c58e8fb240/org.springframework.context/src/main/java/org/springframework/scheduling/support/DelegatingErrorHandlingRunnable.java#L49)
+
+---
+
+## 统一封装建议
+
+为了避免漏写 `try-catch`，可统一封装任务：
+
+```java
+Runnable safe(Runnable task) {
+    return () -> {
+        try {
+            task.run();
+        } catch (Exception e) {
+            e.printStackTrace(); // 或 log.error(...)
+        }
+    };
+}
+
+executor.scheduleAtFixedRate(safe(() -> {
+    // your logic
+}), 0, 1, TimeUnit.SECONDS);
+```

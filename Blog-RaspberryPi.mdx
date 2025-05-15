@@ -1,65 +1,76 @@
 ---
-title: "博客迁移到 raspberrypi zero 2w"
+title: '博客迁移到 raspberrypi zero 2w'
 date: '2025-05-11'
 tags: ['raspberrypi', 'linux']
 draft: false
 summary:
 ---
 
-## 博客迁移背景与设备准备
-
 这几天搬家，环境各方面都不稳定，新家没有网络，原本屋内架设的子网和服务器也因为搬迁变得不可靠。
 
 为了方便迁移，正好手边还有几个 Raspberry Pi，就考虑把博客迁到 Pi 上运行。
 
+
+## 主机操作系统
+
+Ubuntu 20.04.6 LTS (Focal Fossa) Desktop
+
+```shell
+$ uname -a
+# Linux my-hostname 6.5.0-34-generic #34~22.04.2-Ubuntu SMP PREEMPT_DYNAMIC Fri Apr 19 13:57:24 UTC 2 x86_64 x86_64 x86_64 GNU/Linux
+```
+
+## Raspberry Pi 2w
+
 设备规格参考如下：
+
+**处理器**: RP3A0: quad-core 64-bit ARM Cortex-A53，1GHz
+
+**内存**: 512MB DDR2
+
+官方参考资料：
 
 - https://www.raspberrypi.com/products/raspberry-pi-zero-2-w/
 - https://datasheets.raspberrypi.com/rpizero2/raspberry-pi-zero-2-w-product-brief.pdf
 
 > At the heart of Raspberry Pi Zero 2 W is RP3A0, a custom-built system-in-package designed by Raspberry Pi in the UK. With a quad-core 64-bit ARM Cortex-A53 processor clocked at 1GHz and 512MB of SDRAM, Zero 2 is up to five times as fast as the original Raspberry Pi Zero.
 
-RP3A0 核心参数：
+其他材料：
 
-- quad-core 64-bit ARM Cortex-A53，1GHz
-- 512MB SDRAM
-
-准备以下基础物料：
-
-- Raspberry Pi Zero 2 W
-- microSD 卡 + 读卡器
-- SD 卡
+- microSD 卡(个人使用的是 32G) + 读卡器
 - 支持数据传输的 USB 数据线（仅充电功能的线不行）
-- 稳定电源供电线
+- 电源供电线(Type-A == Micro-B): 用于供电
+- 数据线(Type-A == Micro-B): OTG口接接主机，以通过 Ethernet Over USB 与主机通信
 
 ---
 
-###  Imager 版本建议与镜像选择
+### Raspberry Pi Imager
+
+Raspberry Pi Imager: Raspberry Pi 官方镜像烧录工具。
 
 建议使用 Raspberry Pi Imager **v1.7.5 及以上**版本进行烧录：
 
-- v1.8 需要 Ubuntu 22.04 才能正常运行
-- v1.7.5 是兼容性和功能的平衡点，Ubuntu 20.04 可用
 - v1.7.2 UI 不好用，并且我这边出现过奇怪的问题，不推荐使用
+- v1.7.5 UI 能看，Ubuntu 20.04 可用
+- v1.8 最低 Ubuntu 22.04 才能运行
 
-版本发布信息可参考：https://github.com/raspberrypi/rpi-imager/releases
+全部版本：https://github.com/raspberrypi/rpi-imager/releases
 
 ---
 
-### 📦 本次使用的系统镜像
+### Pi 使用的操作系统
 
-```
-Raspberry Pi OS Lite
-Release date: May 6th 2025
-System: 64-bit
-Kernel version: 6.12
-Debian version: 12 (bookworm)
-Size: 424MB
-```
+官方下载链接：https://www.raspberrypi.com/software/operating-systems/
 
-主机镜像：Ubuntu 20.04.6 LTS (Focal Fossa)
+| |             |
+| -------------- | -------------------- |
+| Name           | Raspberry Pi OS Lite |
+| Release date   | May 6th 2025         |
+| System         | 64-bit               |
+| Kernel version | 6.12                 |
+| Debian version | 12 (bookworm)        |
+| Size           | 424MB                |
 
-烧录镜像这类基础步骤就不赘述了。
 
 ## 配置通过 ethernet over usb 接入 pi
 
@@ -139,7 +150,7 @@ modules-load=dwc2,g_ether
 
 ---
 
-###  系统启动后验证配置（Pi 端）
+### 系统启动后验证配置（Pi 端）
 
 进入系统（如通过 Wi-Fi 暂时 SSH）后，执行：
 

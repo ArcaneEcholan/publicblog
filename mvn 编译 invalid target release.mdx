@@ -6,31 +6,26 @@ draft: false
 summary:
 ---
 
-如果使用以下 pom 配置编译项目，有概率会得到报错： `invalid target release: 11`。
-
+如果用来运行 maven 的 jdk 版本是 1.8，且在 maven compiler 插件中指定使用 java 11 编译, 会得到报错： `invalid target release: 11`。
 
 ```xml
-<build>
-  <plugins>
-    <plugin>
-      <artifactId>maven-compiler-plugin</artifactId>
-      <version>3.10.1</version>
-      <configuration>
-        <source>11</source>
-        <target>11</target>
-      </configuration>
-    </plugin>
-  </plugins>
-</build>
+<plugin>
+  <artifactId>maven-compiler-plugin</artifactId>
+  <version>3.10.1</version>
+  <configuration>
+    <source>11</source>
+    <target>11</target>
+  </configuration>
+</plugin>
 ```
 
-这个报错跟 maven 使用的 javac 版本有关。
+这个报错跟 maven 或其插件本身没关系，报错的是 java 编译器: javac。
 
 ## javac
 
-这个错误跟 maven 及其插件本身无关，即使使用 javac 命令编译，也可能复现这个错误。
+现在是用 javac 复现上述错误。
 
-准备 java 文件：
+准备 java 文件： HelloWorld.java
 
 ```java
 public class HelloWorld {
@@ -40,7 +35,7 @@ public class HelloWorld {
 }
 ```
 
-使用 javac 8 进行编译：
+使用 javac 8 并指定 `-target 11` 编译：
 
 ```shell
 $ javac -version
@@ -54,7 +49,7 @@ Usage: javac <options> <source files>
 use -help for a list of possible options
 ```
 
-如果使用 javac 11，再指定 -target 11，则不会出现该报错。
+如果使用 javac 11 并指定 `-target 11`，则不会出现该报错。
 
 ```shell
 $ javac -version
@@ -66,9 +61,13 @@ $ javac -target 11 HelloWorld.java
 # compile success
 ```
 
-此时，你甚至可以指定 -target 8，只要没有使用超过 java8 的语法，编译仍然能通过。
+你甚至可以使用 javac 11 并指定 `-target 8` 进行编译，编译仍然能通过。
 
 ```shell
+$ javac -version
+
+javac 11.0.25
+
 $ javac -target 8 HelloWorld.java
 
 # compile success
@@ -76,21 +75,21 @@ $ javac -target 8 HelloWorld.java
 
 ## `javac -target`
 
-要看下 javac 说明了。
+看下 javac 说明:
 
 ```
 $ man javac
 
 ...
-       --target release or -target release
-              Generates class files suitable for the  specified  Java  SE
-              release.   The  supported values of release are the current
-              Java SE release and a limited number of previous  releases,
-              detailed in the command-line help.
+-target release
+  Generates class files suitable for the  specified  Java  SE
+  release.   The  supported values of release are the current
+  Java SE release and a limited number of previous  releases,
+  detailed in the command-line help.
 ...
 ```
 
-这下知道了，一个版本的 javac 可以支持解析低于该版本的 java 语法。
+`-target` 指定将源码编译成指定 Java 本版的 class 文件，支持当前版本及先前版本。
 
 比如:
 
@@ -100,8 +99,9 @@ $ man javac
 
 而如果使用 javac 8 以 -target 11 为目标去编译，则会出现 `invalid target release: 11` 报错。
 
-那怎么让 maven 用指定版本的 javac 去编译呢？
+现在知道了，只要用足够高版本的 javac 去编译，即可避免该报错。
 
+可是编译大型项目都是使用 maven 而不是单独的 javac，那怎么让 maven 用指定版本的 javac 去编译呢？
 
 ## 如何让 maven 使用指定 javac 进行编译？
 

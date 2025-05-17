@@ -1,0 +1,18 @@
+---
+title: ibus-rime 命令模式自动切换英文
+date: '2025-05-17'
+tags: ['linux']
+draft: false
+summary:
+---
+
+/home/chaowen/.config/ibus/rime/xx.schema.yaml
+
+```
+key_binder:
+  bindings:
+    - { when: always, accept: Release+Escape, toggle: ascii_mode }
+```
+
+重新部署 rime。
+

@@ -1,0 +1,140 @@
+---
+title: lighttpd serve blog
+date: '2025-05-17'
+tags: ['linux']
+draft: false
+summary:
+---
+
+目标：
+
+在PI上架设博客。
+
+博客：框架 next, [static-export](https://nextjs.org/docs/pages/guides/static-exports)
+
+PI 硬件：
+
+- 512MB 内存
+- cpu: ARM 架构，4 核心 Cortex-A53，1GHz
+
+PI 系统：
+
+```shell
+$ uname -a
+# Linux raspberrypi-1 6.6.31+rpt-rpi-v8 #1 SMP PREEMPT Debian 1:6.6.31-1+rpt1 (2024-05-29) aarch64 GNU/Linux
+
+$ lsb_release -a
+#No LSB modules are available.
+#Distributor ID: Debian
+#Description:    Debian GNU/Linux 12 (bookworm)
+#Release:        12
+#Codename:       bookworm
+```
+
+选用服务器：[Lighttpd](https://www.lighttpd.net/)
+
+理由：轻便，实测跑起来1.6MB
+
+安装 lighttpd：
+
+```shell
+apt update
+
+apt install lighttpd
+```
+
+```shell
+$ lighttpd -version
+# lighttpd/1.4.69 (ssl) - a light and fast webserver
+```
+
+## 配置
+
+/etc/lighttpd/lighttpd.conf
+
+### 配置静态文件目录
+
+```
+server.document-root = "/home/chaowen/blogstatic"
+server.port = 9000
+server.username = "chaowen"
+server.groupname = "chaowen"
+```
+
+### 配置转发（next 专属）
+
+next 静态网站特点： https://nextjs.org/docs/pages/guides/static-exports#deploying
+
+```
+url.rewrite-if-not-file = (
+"^/([^.]+)$" => "/$1.html"
+)
+```
+
+如果文件不存在，则使用映射： "^/([^.]+)$" => "/$1.html" 查找文件
+
+映射解析：如果请求路径中，不包含 "."（即没有文件扩展名），如 "/about", "/blog/hello", 则转而查找返回 /xxx.html
+
+| 正则      | 解释                   |
+| --------- | ---------------------- |
+| **[^.]+** | 一连串不包含"."的字符  |
+| **$1**    | ([^.]+) 匹配到的字符串 |
+
+### 示例
+
+| 请求路径    | 转发路径         |
+| ----------- | ---------------- |
+| /about      | /about.html      |
+| /blog/post1 | /blog/post1.html |
+| /main.js    | 原样返回         |
+| /image.png  | 原样返回         |
+
+# 附录：完整配置文件
+
+```conf
+server.modules = (
+  "mod_access",
+  "mod_alias",
+  "mod_redirect",
+  "mod_deflate",
+  "mod_expire"
+)
+
+server.document-root = "/home/chaowen/blogstatic"
+server.port = 9000
+server.username = "chaowen"
+server.groupname = "chaowen"
+
+index-file.names = ( "index.html", "index.htm" )
+
+mimetype.assign = (
+  ".html" => "text/html",
+  ".htm"  => "text/html",
+  ".css"  => "text/css",
+  ".js"   => "application/javascript",
+  ".json" => "application/json",
+  ".jpg"  => "image/jpeg",
+  ".jpeg"s not an actual fi => "image/jpeg",
+  ".png"  => "image/png",
+  ".gif"  => "image/gif",
+  ".svg"  => "image/svg+xml",
+  ".ico"  => "image/x-icon",
+  ".woff" => "font/woff",
+  ".woff2"=> "font/woff2",
+  ".ttf"  => "font/ttf",
+  ".eot"  => "application/vnd.ms-fontobject"
+)
+
+deflate.mimetypes = ( "text/plain", "text/html", "text/css", "application/javascript", "application/json" )
+
+expire.url = (
+  "/" => "access plus 1 days"
+)
+
+server.modules += ( "mod_rewrite" )
+
+url.rewrite-if-not-file = (
+  "^/([^.]+)$" => "/$1.html"
+)
+```
+

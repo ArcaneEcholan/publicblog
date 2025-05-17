@@ -1,0 +1,91 @@
+---
+title: Ubuntu 20.04 的终极中文输入方案
+date: '2025-05-17'
+tags: ['linux']
+draft: false
+summary:
+---
+
+Linux 上输入中文的体验, 可谓一言难尽。
+
+搜狗 Linux 版着实不好用，安装过程还很坎坷。
+
+Rime 则是上位替代，因为它体验流畅（笔者主观感受），可定制化程度高，但也正是因为后者，劝退了不少人。
+
+此文基于 [ohiyox](https://blog.ohiyox.in/archives/1445) 及其他博客，简单记录 Rime 的安装过程，实测 Ubuntu 20.04 Desktop 上完美运行。
+
+核心方案基于 ibus + Rime + 双拼，兼顾稳定性和可定制性。
+
+## Rime
+
+接触 Rime 之前，建议阅读 [Rime 输入方案指南](https://github.com/rime/home/wiki/RimeWithSchemata)
+
+同时关注 [官方Github帐号](https://github.com/rime)
+
+## 核心方案
+
+### 使用 ibus 框架
+
+系统默认已安装，若无可手动安装：
+
+```bash
+sudo apt install ibus ibus-rime
+ibus restart
+```
+
+### 安装 plum（Rime 官方配置助手）
+
+```bash
+cd ~
+curl -fsSL https://git.io/rime-install | bash
+```
+
+### 安装双拼方案
+
+以 flypy（小鹤双拼） 为例
+
+安装双拼方案
+
+```bash
+cd plum
+bash rime-install double-pinyin
+```
+
+设置默认方案为 "小鹤双拼"
+
+编辑 `~/.config/ibus/rime/default.yaml`：
+
+```yaml
+patch:
+  schema_list:
+    - schema: double_pinyin_flypy
+  menu/page_size: 10
+```
+
+### 默认启用简体中文
+
+或许 Rime 的作者是台湾人，其默认是繁体输入
+
+参见 [miaostay 博客](https://miaostay.com/2018/11/rime设置为默认简体) 将简体设为默认。
+
+### 禁用 grave 热键（Tab 上方的 \` 键）
+
+避免影响 \` 键的正常输入：
+
+编辑 `~/.config/ibus/rime/default.yaml`，禁用包含 `grave` 和 `hotkeys` 的配置项。
+
+### 利用 Rime 提升 Vim 的中文输入体验
+
+Vim 命令模式依赖英文键盘，频繁中英切换，会极大降低 Vim 使用效率。
+
+借助 Rime 高可定制性，可实现：按下 ESC 自动切换为英文。
+
+编辑目标输入方案（如 `double_pinyin_flypy.schema.yaml`）：
+
+```yaml
+key_binder:
+  bindings:
+    - { when: always, accept: Release+Escape, toggle: ascii_mode }
+```
+
+

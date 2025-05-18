@@ -1,0 +1,69 @@
+---
+title: '影响 IPhone 性能的几点因素'
+date: '2025-05-18'
+tags: ['other']
+draft: false
+summary:
+---
+
+## Battery And Performance
+
+IPhone 有一个叫做“性能管理”的东西。
+
+它通过对一些系统组件的最大性能进行调整，以防止手机因以下因素引发的意外关机：
+* 电量过低
+* 电池化学老化过严重
+* 处于低温环境时
+
+IPhone 的"性能管理"只会在手机意外关机时启用，而手机的“基础性能管理”是一直启用的。
+
+
+[iPhone battery and performance](https://support.apple.com/en-us/101575)
+
+> iPhone performance management works by looking at a combination of the **device temperature**, **battery state of charge**, and **battery impedance**. Only if these variables require it to prevent unexpected shutdowns, iOS will dynamically manage the maximum performance of some system components, such as the **CPU and GPU**.
+
+> To ensure that the battery and the overall system operates as designed and internal components are protected, all iPhone models include **fundamental performance management**. This includes behavior in hot or cold temperatures, as well as internal voltage management. This type of performance management is required for safety and expected function, and cannot be turned off.
+
+
+以上事实在iPhone11之后有所改变。
+
+在笔者自己的 iPhone 13 mini 的“电池健康于充电”页面中，"Peak Performance Capacity" 条目下方有一行小灰字：
+
+> Built-in dynamic software and hardware systems will help counter performance impacts that may be noticed as your iPhone battery chemically ages.
+
+在相关论坛上逛了一圈之后，发现 99%，78% 电量的iPhone均出现了这行小字，说明“性能管理”是一直开着的。
+
+在电池健康状态、电池电量以及手机的负载这些因素的影响下，手机可能出现：app 启动时间过长、帧率被降低、反应过慢等现象。
+
+[About the battery and performance of iPhone 11 and later](https://support.apple.com/en-us/106348)
+
+> **The software and hardware system** built into your iPhone is automatic, **always-on**, and works to provide the best possible performance as battery aging occurs over time.
+
+> While performance effects are reduced as much as possible, battery aging might still eventually lead to noticeable, possibly temporary, effects.
+
+> Depending on the battery state, level of charge, and the tasks that your iPhone is handling, examples might include longer app launch times, lower frame rates, increased processing times, reduced wireless-data throughput, backlight dimming, or lower speaker volume. During the most extreme cases, the camera flash or other camera features might be temporarily disabled.
+
+## Too Hot or Too Cold
+
+手机过热，也会导致性能受到影响。
+
+[If your iPhone or iPad gets too hot or too cold](https://support.apple.com/en-us/118431)
+
+> You might notice that your device feels warmer when you:
+>
+> * Set up your device the first time
+> * Restore from a backup
+> * Wirelessly charge your device
+> * Use graphics-intensive or processor-intensive apps, games, or features, including camera apps
+> * Stream high-quality video
+>
+> These conditions are normal, and your device will return to a regular temperature when the process is complete or when you finish your activity. If your device doesn't display a temperature warning, you can keep using your device.
+
+
+
+> If the interior temperature of your device exceeds the normal operating range, you might notice these changes:
+> * Charging, including wireless charging, slows or stops
+> * The display dims or goes black
+> * Cellular radios enter a low-power state; the signal might weaken during this time
+> * The camera flash or other camera features might be temporarily disabled
+> * In some apps or features, performance is reduced with lower frame rates or increased processing times

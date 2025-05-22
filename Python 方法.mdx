@@ -1,0 +1,208 @@
+---
+title: "Python 趣事：实例方法"
+date: "2025-05-22"
+tags: ["python"]
+draft: false
+summary:
+---
+
+我们习惯地认为：
+
+```python
+class Dog:
+    def bark(self):
+        print("woof")
+```
+
+`bark` 是 Dog 的“方法”，访问时可以自动传入 `self`。
+
+在其他语言中，这是一个类似约定俗称的事情。
+
+在 python 中也是这样，不同的是，这个过程可以用更加直观和解构的形式观察到。
+
+其核心原理就隐藏在 Python 的 **描述符协议（descriptor protocol）** 背后，协议的 `__get__()` 正是实现这一魔法的核心。
+
+---
+
+## 函数为什么是描述符？
+
+Python 中，只要一个对象实现了 `__get__()`、`__set__()` 或 `__delete__()` 方法，它就是一个 **描述符**。
+
+而你用 `def` 在 class 内部定义函数，其实是 `function` 类型的实例，并且定义了 `__get__()` 方法。
+
+你可以验证这一点：
+
+```python
+class A:
+    def foo(self): pass
+
+print(hasattr(A.foo, '__get__'))  # True
+```
+
+这说明类中定义的函数本质上就是一个描述符。
+
+---
+
+## `__get__()` 是谁定义的？何时调用？
+
+### 谁定义的？
+
+是 Python 内部的 `function` 类型（也就是 `def` 出来的函数）定义了 `__get__()`。你无法用 `type()` 看到源码，但文档有说明：
+
+> [官方文档：描述符 HOWTO](https://docs.python.org/3/howto/descriptor.html#descriptor-protocol)
+
+---
+
+### 何时调用？
+
+当你通过对象访问类属性时：
+
+```python
+dog = Dog()
+dog.bark  # ← 就在这里，Python 会自动调用 bark.__get__(dog, Dog)
+```
+
+也就是说：
+
+```python
+bound = Dog.__dict__['bark'].__get__(dog, Dog)
+```
+
+这一步发生在你 **访问 `dog.bark`** 时，而不是调用 `bark()` 时。
+
+---
+
+## `__get__()` 的作用到底是什么？
+
+它的目的是：**返回一个新的绑定方法对象（bound method）**，这个对象包含两个东西：
+
+- 原始的函数对象
+- 当前的实例对象（会被作为 `self` 自动传入）
+
+这个绑定方法对象在你调用 `dog.bark()` 时，会自动执行：
+
+```python
+Dog.bark(dog)
+```
+
+也就是说，`__get__()` 做的事情就是：
+
+```python
+def __get__(self, instance, owner):
+    if instance is None:
+        return self  # 通过类访问，返回原始函数
+    return MethodType(self, instance)  # 绑定函数 + 实例
+```
+
+注意：上面代码是概念上的，并非 Python 内部实现的源码。
+
+---
+
+## 对比类函数和实例方法
+
+```python
+class A:
+    def say(self): pass
+
+a = A()
+
+print(type(A.say))  # <class 'function'>
+print(type(a.say))  # <class 'method'>
+```
+
+- `A.say` 是函数对象
+- `a.say` 是绑定方法（Python 帮你执行了 `say.__get__(a, A)`）
+
+---
+
+## 方法调用背后的流程
+
+我们来看一个完整的调用过程：
+
+```python
+class Cat:
+    def meow(self):
+        print("meow")
+
+cat = Cat()
+cat.meow()  # 我们平常习惯这样调用方法
+```
+
+你看到的是 `cat.meow()`，Python 实际做的是：
+
+```python
+# 1. 从类字典中取出函数对象
+func = Cat.__dict__['meow']
+
+# 2. 调用函数对象的 __get__ 方法，返回一个绑定方法
+bound_method = func.__get__(cat, Cat)
+
+# 3. 调用这个绑定方法，它会自动把 cat 作为 self 传进去
+bound_method()
+```
+
+这三个步骤完成了从“类函数”到“绑定方法”的自动转换，也就是你看到的“自动绑定 self”。
+
+---
+
+## 手动模拟方法调用
+
+如果你不通过 `cat.meow()`，而是手动执行上面几步，效果完全一致：
+
+```python
+class Cat:
+    def meow(self):
+        print(f"meow from {self}")
+
+cat = Cat()
+
+# 手动完成方法绑定
+func = Cat.__dict__['meow']
+bound = func.__get__(cat, Cat)
+bound()  # 输出同样效果
+```
+
+说明 `__get__` 确实是连接“类函数”与“实例方法”的关键桥梁。
+
+---
+
+## 自定义一个描述符模拟方法绑定
+
+为了更深入理解 `__get__` 的用途，我们可以手写一个简单的描述符，模拟 `function.__get__` 的行为：
+
+```python
+class SimpleMethod:
+    def __init__(self, func):
+        self.func = func
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self.func
+        def bound_method(*args, **kwargs):
+            return self.func(instance, *args, **kwargs)
+        return bound_method
+```
+
+使用方式：
+
+```python
+class Bird:
+    def fly(self):
+        print(f"{self} is flying")
+
+Bird.fly = SimpleMethod(Bird.fly)
+
+b = Bird()
+b.fly()  # 自动传入 self，跟原生行为一样
+```
+
+这里我们完全模拟了 Python 内部对方法的封装逻辑：访问时返回一个自动传入实例的包装函数。
+
+---
+
+## 推荐阅读
+
+- [官方描述符协议 HOWTO 指南](https://docs.python.org/3/howto/descriptor.html#descriptor-protocol)
+- [官方教程：类中的方法对象](https://docs.python.org/3/tutorial/classes.html#method-objects)
+
+---

@@ -1,0 +1,115 @@
+---
+title: 'SpringBoot 静态资源处理路径的大坑'
+date: '2025-05-22'
+tags: ['Java', 'SpringBoot']
+draft: false
+---
+
+Spring Boot 默认会自动处理静态资源，包括：
+
+```
+classpath:/META-INF/resources/
+classpath:/resources/
+classpath:/static/
+classpath:/public/
+```
+
+但一旦你自己通过 `WebMvcConfigurer` 显式添加了 `ResourceHandler`，**Spring Boot 的默认配置就会失效**。这会导致很多静态资源（如 Swagger UI、静态页面、前端打包资源）**无法被访问**。
+
+---
+
+### 坑点复现
+
+很多人会像下面这样添加磁盘路径支持：
+
+```java
+@Configuration
+public static class CustomStaticLocationConfigure implements WebMvcConfigurer {
+
+  @Autowired
+  @Override
+  public void addResourceHandlers(ResourceHandlerRegistry registry) {
+    registry.addResourceHandler("/**")
+        .addResourceLocations("file:/my/static/");
+  }
+}
+```
+
+结果却发现：
+
+- `localhost:8080/index.html` 404
+- Swagger 页面 404
+- 原本 `/static/` 下的资源也 404
+
+---
+
+### 正确写法：保留默认路径
+
+```java
+@Configuration
+public static class CustomStaticLocationConfigure implements WebMvcConfigurer {
+
+  @Override
+  public void addResourceHandlers(ResourceHandlerRegistry registry) {
+    registry.addResourceHandler("/**")
+        .addResourceLocations(
+            // 自定义路径
+            "file:/my/static/",
+
+            // 保留 Spring Boot 默认路径
+            "classpath:/META-INF/resources/",
+            "classpath:/resources/",
+            "classpath:/static/",
+            "classpath:/public/"
+        );
+  }
+}
+```
+
+---
+
+### Spring Boot 背后原理
+
+核心在于 `WebMvcConfigurationSupport`：
+
+```java
+@Bean
+@Nullable
+public HandlerMapping resourceHandlerMapping(...) {
+    ResourceHandlerRegistry registry = new ...
+    addResourceHandlers(registry); // 这里调用自己写的 WebConfigurer 
+
+    AbstractHandlerMapping handlerMapping = registry.getHandlerMapping();
+    ... 
+
+}
+```
+
+注册逻辑如下：
+
+```java
+protected AbstractHandlerMapping getHandlerMapping() {
+    for (ResourceHandlerRegistration registration : this.registrations) {
+        ...
+        // 重点看这里
+        urlMap.put(pathPattern, handler);
+    }
+    return new SimpleUrlHandlerMapping(urlMap, this.order);
+}
+```
+
+如果你自定义了 `ResourceHandler`，`urlMap` 里的内容就是**你自己加的路径**，默认配置**不会自动追加**。
+
+---
+
+### 总结
+
+- 自定义静态资源路径时必须显式包含默认路径。
+- Spring Boot 默认路径会被你注册的 handler 覆盖，而不是叠加。
+- 推荐写法是：**自定义 + 默认路径**全写上。
+
+---
+
+### 参考
+
+- [Spring Boot 官方文档 - 静态资源](https://docs.spring.io/spring-boot/docs/current/reference/html/web.html#web.servlet.spring-mvc.static-content)

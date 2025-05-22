@@ -1,0 +1,124 @@
+---
+title: "Python 趣事：Global"
+date: "2025-05-22"
+tags: ["python"]
+draft: false
+summary:
+---
+
+## global 与 nonlocal 的区别是什么？
+
+在 Python 中，`global` 和 `nonlocal` 都用于在函数内部修改作用域外的变量，但它们适用于不同的作用域层级：
+
+| 关键词        | 修改的变量来自哪里       | 用在什么场景                    |
+|----------------|---------------------------|---------------------------------|
+| `global`       | 最外层模块作用域（全局） | 在函数中修改全局变量            |
+| `nonlocal`     | 最近的闭包函数作用域     | 在嵌套函数中修改外层函数变量    |
+
+理解 `global` 和 `nonlocal` 的关键是：**它们影响的是变量绑定的“作用域”**，而不是变量本身的值。
+
+下面说明 global 和 nonlocal 的作用范围（以函数为参考系）。
+
+---
+
+## global 作用范围：函数所在的模块级别
+
+当你在一个函数中使用 `global x`，你告诉 Python：
+
+> “这个函数里面的所有对 `x` 的操作，都是指向模块顶层的 `x`。”
+
+**也就是说，这个 `x` 必须是在函数外部、模块最顶层定义的变量。**
+
+### 示例：
+
+```python
+x = "module level"
+
+def f():
+    global x
+    x = "changed"
+
+f()
+print(x)  # 输出 "changed"
+```
+
+如果 `x` 没有在模块级别存在，你在函数中 `global x` 然后赋值，**Python 会自动在模块级别创建它**。
+
+---
+
+## nonlocal 作用范围：最近的一层函数封闭作用域（但不是模块级）
+
+当你使用 `nonlocal x`，你告诉 Python：
+
+> “这个函数里的 `x` 是来自某个外层函数，而不是全局的，也不是当前函数本地的。”
+
+如果没有外层函数中存在的变量名为 `x`，则会报错：
+
+```python
+def f():
+    def inner():
+        nonlocal x  # ❌ 错误：找不到外层定义的 x
+        x = 123
+    inner()
+```
+
+### 正确示例：
+
+```python
+def outer():
+    x = "from outer"
+    def inner():
+        nonlocal x
+        x = "modified"
+    inner()
+    print(x)  # 输出 "modified"
+```
+
+---
+
+## 不能跨层使用 nonlocal
+
+```python
+def level1():
+    def level2():
+        x = "level2"
+        def level3():
+            nonlocal x  # ✅ 找到 level2 中的 x
+            x = "updated"
+        level3()
+        print(x)  # 输出 "updated"
+    level2()
+```
+
+但如果你在 `level3()` 中写 `nonlocal x`，而 `x` 只在 `level1()` 中定义了，那会报错。**Python 只允许往上找“一层”函数作用域，不会跨多层。**
+
+---
+
+## 两者总结图示（以函数为单位）
+
+```python
+x = "global"
+
+def outer():
+    y = "nonlocal"
+
+    def inner():
+        global x      # 指向模块级的 x
+        nonlocal y    # 指向 outer() 中的 y
+```
+
+- `global x` → 查找模块最外层的 `x`
+- `nonlocal y` → 查找最近的外层函数 `outer()` 中的 `y`
+
+---
+
+这部分是理解作用域控制的关键：**`global` 作用于模块作用域，`nonlocal` 作用于最近的一层封闭函数作用域。**
+
+---
+
+## 官方文档链接
+
+- [`global` 官方文档](https://docs.python.org/3/reference/simple_stmts.html#global)
+- [`nonlocal` 官方文档](https://docs.python.org/3/reference/simple_stmts.html#the-nonlocal-statement)
+
+---

@@ -1,0 +1,26 @@
+---
+title: Make Proxy Great Again
+date: '2025-05-22'
+tags: ['']
+draft: false
+summary:
+---
+
+## git
+
+https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpproxy
+
+> http.proxy
+>
+>   Override the HTTP proxy, normally configured using the http_proxy, https_proxy
+
+git config set [scope] http.proxy address
+
+system wide: /etc/gitconfig
+
+user global: ~/.gitconfig
+
+```
+[http]
+    proxy = http://vpnserver:7890
+```

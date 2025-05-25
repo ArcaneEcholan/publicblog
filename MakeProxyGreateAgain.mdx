@@ -6,6 +6,26 @@ draft: false
 summary:
 ---
 
+## npm
+
+https://docs.npmjs.com/cli/v10/using-npm/config#proxy
+
+https://docs.npmjs.com/cli/v10/using-npm/config#https-proxy
+
+https://docs.npmjs.com/cli/v10/using-npm/config#registry
+
+```sh
+npm config ls -l | grep proxy
+
+npm config set registry https://registry.npmmirror.com
+
+npm config set https-proxy http://<username>:<password>@<proxy-server-url>:<port>
+npm config set proxy http://<username>:<password>@<proxy-server-url>:<port>
+
+npm config delete proxy
+npm config delete https-proxy
+```
+
 ## git
 
 https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpproxy

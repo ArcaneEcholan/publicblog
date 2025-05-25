@@ -17,6 +17,7 @@ https://docs.npmjs.com/cli/v10/using-npm/config#registry
 ```sh
 npm config ls -l | grep proxy
 
+npm config delete registry
 npm config set registry https://registry.npmmirror.com
 
 npm config set https-proxy http://<username>:<password>@<proxy-server-url>:<port>

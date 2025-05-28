@@ -1,0 +1,128 @@
+---
+title: Husky
+date: '2025-05-28'
+tags: ['eslint', 'prettier', 'husky', 'pre-commit', '自动化']
+draft: false
+summary: |
+  在每次 commit 时自动化格式化代码，避免代码风格冲突，结合 ESLint、Prettier 和 Husky 实现全流程。
+---
+
+目标：在每次 **commit** 时自动化格式化代码，**避免团队内代码风格冲突**，提升代码一致性。下面通过 `ESLint`、`Prettier` 和 `Husky` 的组合来实现。
+
+---
+
+### ✅ 安装依赖
+
+首先，安装核心依赖（ESLint + Prettier 及其集成插件）：
+
+```bash
+npm install --save-dev eslint prettier eslint-config-prettier eslint-plugin-prettier
+```
+
+> 💡 **ESLint** 主要负责语法检查，格式化只是它的小部分功能，通常结合 **Prettier** 进行完整的代码格式化。
+
+---
+
+### ✅ ESLint 配置 `.eslintrc.js`
+
+```js
+module.exports = {
+  extends: [
+    "react-app",             // create-react-app 内置规则
+    "react-app/jest",        // jest 相关规则
+    "plugin:prettier/recommended" // 集成 prettier，自动关闭冲突规则
+  ],
+  rules: {
+    // 可根据团队需要自定义规则
+    // "semi": ["error", "always"],
+  }
+};
+```
+
+---
+
+### 📌 `plugin:prettier/recommended` 作用
+
+这个配置做了三件事：
+- **禁用** ESLint 中和 Prettier 冲突的规则（使用 `eslint-config-prettier`）。
+- **启用** `eslint-plugin-prettier`，将 **Prettier 作为一个 ESLint 规则**（名为 `"prettier/prettier"`）。
+- 当执行以下命令时，会自动调用 Prettier 修复风格问题：
+
+```bash
+npx eslint --fix src/
+```
+
+这样，**ESLint 与 Prettier 完美结合**，只需一个命令就能同时完成语法检查与格式化。
+
+---
+
+### ✅ 安装 Husky，管理 pre-commit 钩子
+
+安装 Husky：
+```bash
+npm install husky --save-dev
+```
+
+在根目录的 `package.json` 中添加：
+```json
+{
+  "scripts": {
+    "prepare": "husky install"
+  }
+}
+```
+
+> 📝 `prepare` 脚本会在执行 `npm install` 后自动运行，帮你初始化 `.husky` 目录并配置 git hooks。
+
+---
+
+### ✅ 创建 pre-commit 钩子
+
+在根目录创建 `.husky/pre-commit` 文件：
+
+```bash
+mkdir -p .husky
+cat <<'EOF' > .husky/pre-commit
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "Running ESLint Fix in ui/..."
+cd ui
+npx eslint --fix "src/**/*.{js,jsx,ts,tsx}"
+EOF
+chmod +x .husky/pre-commit
+```
+
+这样，每次 **`git commit`** 时，husky 会自动切换到 `ui` 目录并运行 ESLint 格式化。
+
+---
+
+### 📦 一定要注意 `.git` 和 husky 的位置！
+
+Husky 的配置依赖 **项目根目录**（`.git` 所在处）：
+```
+/root (有 .git、.husky)
+ ├─ package.json     👈 根目录，包含 prepare、husky 配置
+ ├─ backend/
+ └─ ui/              👈 子项目，包含自己的 package.json（依赖、eslint、prettier）
+```
+
+> ⚠️ Husky 只能在 `.git` 所在的目录配置。如果你的前端项目是放在后端的子目录（比如 `backend/ui/`），确保 husky 仍在根目录并执行格式化命令（`cd ui`）。
+
+---
+
+### 🔗 相关文档
+
+- [Husky 官方文档](https://typicode.github.io/husky/#/)
+- [Prettier 官方文档](https://prettier.io/docs/en/index.html)
+- [ESLint 官方文档](https://eslint.org/docs/latest/)
+
+---
+
+### 📝 小结
+
+通过上述步骤，**你就实现了：**
+- 提交前自动修复代码风格（eslint + prettier）
+- 不再因为风格问题产生冲突，避免多次合并麻烦
+- 保持团队代码风格一致，体验更流畅
+

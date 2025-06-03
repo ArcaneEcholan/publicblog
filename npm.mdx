@@ -1,0 +1,50 @@
+---
+title: npm/pip/... all you need to know
+date: '2025-06-04'
+tags: ['npm', 'pip']
+draft: false
+summary:
+---
+
+# npm install
+
+https://docs.npmjs.com/cli/v10/commands/npm-install#description
+
+### heavily used
+
+| Flag                | Saved To             | Note                                |
+|:--------------------|:---------------------|:------------------------------------|
+| -     | dependencies         |                                     |
+| -P, --save-prod     | dependencies         | Default unless -D or -O are present |
+| -D, --save-dev      | devDependencies      |                                     |
+
+### less used
+
+| Flag                | Saved To             | Note                                |
+|:--------------------|:---------------------|:------------------------------------|
+| --save-peer         | peerDependencies     |                                     |
+| -O, --save-optional | optionalDependencies |                                     |
+| --no-save           | Not saved            | Prevents saving to dependencies     |
+
+# npm run
+
+https://docs.npmjs.com/cli/v8/commands/npm-run-script
+
+> This runs an arbitrary command from a package's "scripts" object.
+> In addition to the shell's pre-existing PATH, npm run adds node_modules/.bin to the PATH provided to scripts. Any binaries provided by locally-installed dependencies can be used without the node_modules/.bin prefix.
+
+npm run 帮我们执行 shell 命令，只不过，它将 node_modules/.bin 也作为了搜索路径（而且这个搜索路径置于全局搜索路径之前）。
+
+使用 --save-dev 安装的依赖（出现在 devDependency 中而不是 dependency 中），会在 node_modules/.bin 下安装一个执行 node_modules 相应目录的指针，npm run 相当于帮我们省略了 node_modules/.bin 前缀。
+
+比如:
+
+```
+
+# 在局部安装了 dev 依赖的情况下
+$ npm install prettier --dev-save
+
+# 以下两者的效果是一样的（当然，如果 prettier 只通过了全局安装，那么后者也是可以运行的，只不过运行的是全局的 prettier）
+$ node_modules/.bin/prettier
+$ npm run prettier
+```

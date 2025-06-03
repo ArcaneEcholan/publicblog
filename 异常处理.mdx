@@ -1,0 +1,144 @@
+---
+title: "异常处理"
+date: '2025-06-03'
+tags: ['java', 'rust']
+draft: false
+summary:
+---
+
+# Java vs Rust
+
+## Java 的异常处理
+
+Java 使用 try-catch-throw 异常处理范式，该范式最初由 c++ 引入，并成为新生代语言的标配。
+
+在 Java 中有一类异常叫做 unchecked exception，这类异常的抛出可以不用在函数签名处做任何声明,因此经常被忽视，维护代码的程序员甚至可能完全不知道某一处函数调用潜伏了异常。
+
+此类异常的滥用，会让异常追踪在很大程度上依赖运行时的 Stacktrace。Stacktrace 是一种很讨人厌的东西，一是会把 log 搞得乱糟糟的，一是 trace 的过程时常令人崩溃。如果异常通过 cause 字段组成链条，那么可以直接看 stacktrace 就可以追踪到异常的最根源，但是如果中间某个环节没有做这样的链接，那么 trace 到一半还要去翻代码，这样的体验极其割裂。
+
+同时，把属于编译环节的问题，延迟到运行时环节处理，只会增加隐形债务，在运行时排查异常，很容易把自己搞得很狼狈。
+
+## Rust 对异常处理的要求
+
+Rust 则将异常当作和正常返回值一样的值来处理，将其从返回值返回调用方。
+
+并且 Rust 在编译期强制要求，调用者要么将异常显示向上传递("?"操作符)，要么就地处理(match)。
+
+## 示例
+
+### Java 在业务中人为抛出 unchecked exception
+
+```java
+var user = findUserByName("john");
+if(user == null) {
+    throw new RuntimeException("User Not Found"); // unchecked: RuntimeException
+}
+```
+
+### Rust
+
+编译器强制调用方用 `match` 或者 `?`，绝对不可能忘记处理
+
+```rust
+fn parse_number(s: &str) -> Result<i32, String> {
+    s.trim().parse::<i32>().map_err(|_| "invalid number".to_string())
+}
+
+fn main() {
+    let s = "abc";
+    let result = parse_number(s);
+
+    match result {
+        Ok(n) => println!("Parsed: {}", n),
+        Err(e) => println!("Error: {}", e),
+    }
+}
+```
+
+# Java 的 unchecked exception: 如何看待
+
+既然这样的依赖运行时的异常处理机制有这种弊端，那是不是它完全不可取了呢？我认为他们是专门为 "bug" 而非“异常”预留的通道。
+
+看这个例子：
+
+```java
+System.out.println("Hello, Java!");
+int result = 10 / 0; // unchecked: ArithmeticException
+System.out.println("Result: " + result);
+```
+
+上面的 10 / 0 是程序员手残导致的 bug，类似的例子还有：对长度为 2 的数组进行了[2] 操作。
+
+其实 Rust 中也有类似的东西，只不过它不叫异常，而叫 panic，这样的问题会在直接引发程序崩溃。
+
+```rust
+fn main() {
+    println!("Hello, Rust!");
+    let result = 10 / 0; // panic! at runtime
+    println!("Result: {}", result);
+}
+```
+
+可以说，上面的情况“理应”引起程序的崩溃，因为他们就是 bug（编程错误)。
+
+Java 的 unchecked exception 像是专门为 bug 而非异常设计的一样，一旦 bug 发生，这些 bugs 可以会通过 unchecked exception 这个渠道让程序崩溃，从而让 bug 得以揭示，而不是被“处理”或者“掩盖”。
+
+从这个角度去看 unchecked exception，其存在就合理多了。
+
+# 注意区分 bug 和"异常“
+
+上个章节把 unchecked exception 和 rust 的 panic! 视为 "bug"，是因为 bug 和异常有着本质的区别，bug 是具有确定性的事实，而异常是具有不确定性的正常分支。
+
+再说极端一点，异常其实和 if-else 一样，其本质是分支。
+
+比如，如果网络连接失败，这样做，如果该文件不存在，那样做，如果用户尚未注册，那么我们返回“未授权”。
+
+也可以从异常的英文去看待（中文太具有迷惑性了）：Exception，意思是正常教条或者规则之外的人或事，如果把“正常规则”看作 if，那么 Exception 就是妥妥的 else 了。
+
+如果这样说，那么接口开发中的 ServerError 指的就应该是那些 "bug"，而不是异常（通过其他返回码来处理）。
+
+以除0为例，下面的代码对 bug 和异常再次进行了区分：
+
+bug:
+
+```java
+int result = 10 / 0;
+```
+
+异常:
+
+```java
+int totalScore = user.totalScore();
+int courses = user.getCourses();
+float avg = totalScore / courses;
+```
+
+如果上面的 courses 是 0，那么 avg 处引发的那个 unchecked exception 就不是 bug 了，而是由不确定的未来引起的正常分支，这是需要当作异常处理的：
+
+```java
+try {
+    int totalScore = user.totalScore();
+    int courses = user.getCourses();
+    float avg = totalScore / courses;
+} catch(ArithmeticException e) {
+    // 略过，或者打日志，或者返回相应的状态码。需要做的事情和在 else 中需要做的没有区别。
+}
+```
+
+Java 的典型 "bug" 场景，或者说容易忽略的异常处理场景包括：
+-   **空指针访问**：`NullPointerException`
+-   **数组越界**：`ArrayIndexOutOfBoundsException`
+-   **除 0**：`ArithmeticException`
+-   **非法参数**：`IllegalArgumentException`，常被用作抛异常传递错误
+
+---
+
+# 最后的思考
+
+像 c++，js，python，c#，这些语言都遵循 try-catch-throw, 但是都不会在编译期检查抛出的异常，只有 Java 在此基础上区分出了 unchecked exception 和 checked exception。
+
+以此看来，Java 在异常分类上做得甚至较为激进。
+
+即使不同语言对异常的处理各有差异，无论该语言是否提供对异常的编译期检测，异常处理都应遵循相同的核心原则：
+
+* **异常应该被显示声明**：程序必须显式传递或处理异常，调用方必须在编译期知道可能出错的分支。不要用 unchecked exception 或者类似的机制偷懒，将异常简单抛出，而不做任何备注或者声明。

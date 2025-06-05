@@ -1,0 +1,238 @@
+---
+title: Node Agent
+date: '2025-06-05'
+tags: ['node', 'js']
+draft: false
+summary:
+---
+
+## 理解 Node.js 的 http(s).Agent：连接复用与生命周期的关键组件
+
+在 Node.js 中发起 HTTP/HTTPS 请求时，`http.request()` 或 `https.request()` 是最底层的 API。尽管你可以在请求参数中配置 hostname、path、headers 等信息，但底层连接的创建、复用、关闭等细节，实际上由 `Agent` 对象负责。
+
+本文将介绍 `http.Agent` / `https.Agent` 的作用、功能场景、常见配置，以及为何必须将连接管理与请求参数解耦。
+
+## 什么是 Agent？
+
+`Agent` 是 Node.js 网络库中一个核心组件，它负责：
+
+* 管理 TCP / TLS 连接的创建与复用
+* 控制最大连接数、空闲连接数
+* 在 HTTPS 中加载客户端证书（mTLS）
+* 自定义 socket 创建逻辑（如劫持连接）
+* 控制底层的 DNS 查询策略
+
+Node.js 默认会为每个 `http` 或 `https` 模块使用一个全局 Agent（`http.globalAgent` / `https.globalAgent`）。你也可以通过传入自定义的 Agent 实现更细粒度的控制。
+
+## 为什么不将所有配置统一放在 request options 中？
+
+虽然 `request(options)` 中可以配置很多参数，但它们只与当前这一次请求有关。而 Agent 的目的是复用连接、共享连接上下文、控制连接策略，因此它的生命周期要长得多。
+
+| 配置项                   | 属于 options               | 属于 agent |
+| --------------------- | ------------------------ | -------- |
+| path, method, headers | ✅                        | ❌        |
+| hostname, port        | ✅                        | ❌        |
+| keepAlive             | ❌                        | ✅        |
+| cert, key, ca         | ✅(临时) / ✅(复用时放 agent 更优) | ✅        |
+| maxSockets            | ❌                        | ✅        |
+| socket reuse          | ❌                        | ✅        |
+| lookup                | ❌                        | ✅        |
+| TLS handshake 参数      | ❌                        | ✅        |
+
+解耦 `agent` 和 `options`，使你可以构建以下场景：
+
+* 使用长连接池请求多个路径
+* 多次请求共享 TLS 配置
+* 对 socket 创建进行统一封装或打日志
+* 根据目标地址动态配置连接策略
+
+## 常见用法示例
+
+### 自定义 Agent 示例（带 keepAlive）
+
+```js
+const http = require('http');
+
+const agent = new http.Agent({
+  keepAlive: true,
+  maxSockets: 10,
+});
+
+http.request({
+  hostname: 'example.com',
+  path: '/',
+  method: 'GET',
+  agent: agent
+}, (res) => {
+  res.pipe(process.stdout);
+}).end();
+```
+
+
+## 高级功能场景
+
+### 连接池限制
+
+```js
+new https.Agent({
+  keepAlive: true,
+  maxSockets: 5,
+  maxFreeSockets: 2,
+});
+```
+
+### 自定义 DNS 查询策略
+
+```js
+new https.Agent({
+  lookup: (hostname, options, callback) => {
+    dns.resolve4(hostname, (err, addresses) => {
+      callback(null, addresses[0], 4);
+    });
+  }
+});
+```
+
+### Socket 拦截与调试
+
+```js
+const agent = new https.Agent();
+agent.createConnection = (options, callback) => {
+  console.log('Connecting to', options.host);
+  return tls.connect(options);
+};
+```
+
+## TLS 连接相关
+
+agent 支持忽略验证服务端证书，并且支持提供客户端证书（用于mTLS)：
+
+### 使用 HTTPS 客户端证书（mTLS）
+
+```js
+const https = require('https');
+const fs = require('fs');
+
+const agent = new https.Agent({
+  cert: fs.readFileSync('client-cert.pem'),
+  key: fs.readFileSync('client-key.pem'),
+  ca: fs.readFileSync('ca.pem'),
+  keepAlive: true,
+  rejectUnauthorized: true,
+});
+```
+
+### 使用 `.pfx` 与密码
+
+```js
+const agent = new https.Agent({
+  pfx: fs.readFileSync('client.pfx'),
+  passphrase: 'your_password'
+});
+
+### **TLS SecureContext**
+
+`TLS SecureContext` 是 Node.js 提供的底层 API，用于构建 TLS 加密上下文（证书、密钥、CA、加密算法等）。
+
+TLS SecureContext 与 Agent 的关系: `https.Agent` 会在内部调用 `tls.connect()`，而 `tls.connect()` 会使用 `tls.createSecureContext()` 来创建连接用的 `SecureContext`。
+
+```
+http.request(options) ─▶ agent.createConnection() ─▶ tls.connect() ─▶ createSecureContext()
+```
+
+### 二者职责对比
+
+| 功能               | 属于 SecureContext | 属于 https.Agent |
+| ---------------- | ---------------- | -------------- |
+| 加载证书 / 私钥        | ✅                | ❌              |
+| 设置 CA 信任链        | ✅                | ❌              |
+| 协商协议（如 ALPN）     | ✅                | ❌              |
+| TLS 参数（如版本、加密套件） | ✅                | ❌              |
+| 是否复用连接           | ❌                | ✅              |
+| 最大连接数            | ❌                | ✅              |
+| 空闲连接管理           | ❌                | ✅              |
+| DNS 查询策略         | ❌                | ✅              |
+
+### 创建并传入 SecureContext
+
+```js
+const tls = require('tls');
+const https = require('https');
+const fs = require('fs');
+
+const secureContext = tls.createSecureContext({
+  cert: fs.readFileSync('client-cert.pem'),
+  key: fs.readFileSync('client-key.pem'),
+  ca: fs.readFileSync('ca.pem'),
+  minVersion: 'TLSv1.2'
+});
+
+const agent = new https.Agent({
+  secureContext,
+  keepAlive: true
+});
+```
+
+这种用法适用于：
+
+* 手动复用同一个 `SecureContext` 实例
+* 精细管理 TLS 策略与证书热更新
+* 减少重复构建带来的 CPU 消耗
+
+## Webpack Dev Server 中的 Agent 应用
+
+Webpack Dev Server 的 `devServer.proxy` 实际上是基于 `http-proxy-middleware` 实现的。该中间件底层调用的是 `http.request()` 或 `https.request()`，并支持将 `agent` 对象作为配置项之一传入。
+
+这意味着你可以通过传入自定义的 `http.Agent` 或 `https.Agent`，来控制 Webpack 转发请求的连接策略。
+
+```
+devServer.proxy ---> http-proxy-middleware ---> http.request(options)
+                                             ↳ options.agent === 你传入的 agent
+```
+
+例如：
+
+```js
+const fs = require('fs');
+const https = require('https');
+
+module.exports = {
+  devServer: {
+    proxy: {
+      '/api': {
+        target: 'https://backend.example.com',
+        changeOrigin: true,
+        secure: true,
+        agent: new https.Agent({
+          cert: fs.readFileSync('./client-cert.pem'),
+          key: fs.readFileSync('./client-key.pem'),
+          ca: fs.readFileSync('./ca.pem'),
+          keepAlive: true
+        })
+      }
+    }
+  }
+};
+```
+
+通过该方式，你可以实现在本地开发阶段：
+
+- 对接需要 mTLS 的 API 服务
+- 信任自签名证书的后端服务
+- 自定义连接行为与复用策略
+
+传入的 agent 会被 http-proxy-middleware 直接用于 `http(s).request` 的 `options.agent` 字段，从而控制连接层的底层行为。
+
+## 总结
+
+- `https.Agent` 是连接控制器（生命周期、重用、连接数）
+- `SecureContext` 是 TLS 加密策略与证书容器
+- `Agent` 封装和托管 `SecureContext`，你也可以手动创建传入
+- 在 Webpack Dev Server 中传入 `agent` 可以实现对代理连接行为的精细控制
+
+## 延伸阅读
+
+- [https.Agent 官方文档](https://nodejs.org/api/https.html#class-httpsagent)
+- [http.Agent 官方文档](https://nodejs.org/api/http.html#class-httpagent)
+- [TLS SecureContext](https://nodejs.org/api/tls.html#tlscreatesecurecontextoptions)
+- [http-proxy-middleware 文档](https://github.com/chimurai/http-proxy-middleware)

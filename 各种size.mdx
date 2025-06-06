@@ -1,0 +1,137 @@
+---
+title: "各种size"
+date: '2025-06-06'
+tags: []
+draft: false
+summary:
+---
+
+```
+spring:
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
+```
+
+private void parseRequest(HttpServletRequest request) {
+handleParseFailure(ex);
+}
+
+
+org.apache.tomcat.util.http.fileupload.impl.SizeLimitExceededException: the request was rejected because its size (9832149) exceeds the configured maximum (2097152)
+
+给spring的参数直接给到了tomcat
+
+```java
+class FileItemIteratorImpl:{
+    /**
+     * The maximum allowed size of a complete request.
+     */
+    private long sizeMax;
+    /**
+     * The maximum allowed size of a single uploaded file.
+     */
+    private long fileSizeMax;
+    protected void init(final FileUploadBase file...
+        final long requestSize = ((UploadContext) ctx).contentLength();
+
+        final InputStream input; // N.B. this is eventually closed in MultipartStream processing
+        if (sizeMax >= 0) {
+            if (requestSize != -1 && requestSize > sizeMax) {
+                throw new SizeLimitExceededException(
+                    String.format("the request was rejected because its size (%s) exceeds the configured maximum (%s)",
+                            Long.valueOf(requestSize), Long.valueOf(sizeMax)),
+                           requestSize, sizeMax);
+```
+
+tomcat 直接看的是content-length
+
+
+
+org.apache.tomcat.util.http.fileupload.impl.FileSizeLimitExceededException: The field object_content exceeds its maximum permitted size of 2097152 bytes.
+
+```java
+/**
+ * An input stream, which limits its data size. This stream is
+ * used, if the content length is unknown.
+ */
+public abstract class LimitedInputStream extends FilterInputStream implements Closeable {
+
+    /**
+     * The maximum size of an item, in bytes.
+     */
+    private final long sizeMax;
+
+    /**
+     * Called to check, whether the input streams
+     * limit is reached.
+     *
+     * @throws IOException The given limit is exceeded.
+     */
+    private void checkLimit() throws IOException {
+        if (count > sizeMax) {
+            raiseError(sizeMax, count);
+        }
+    }
+
+    @Override
+    public int read(final byte[] b, final int off, final int len) throws IOException {
+        final int res = super.read(b, off, len);
+        if (res > 0) {
+            count += res;
+            checkLimit();
+        }
+        return res;
+    }
+```
+
+read的过程中最终调了checklimit
+
+
+顺序：
+
+打着两个点：
+
+FileItemIteratorImpl:``
+final long requestSize = ((UploadContext) ctx).contentLength();
+
+
+FileUploadBase:
+Streams.copy(item.openStream(), fileItem.getOutputStream(),
+
+filesize射程 2M
+reqsize 射程 100M
+传个10M的，第一个点能过（查contentlength)，第二个点过不了（再filesize）（实际上他是拿file之前走了下multistream的init，里面有对contentlength的检查，这里没过。
+
+所以 reqsize 先查，filesize再查,而且后者是对每一个file的
+
+            final FileItemIterator iter = getItemIterator(ctx);
+            final FileItemFactory fileItemFactory = Objects.requireNonNull(getFileItemFactory(),
+                    "No FileItemFactory has been set.");
+            final byte[] buffer = new byte[Streams.DEFAULT_BUFFER_SIZE];
+            while (iter.hasNext()) {
+                final FileItemStream item = iter.next();
+                // Don't use getName() here to prevent an InvalidFileNameException.
+                final String fileName = item.getName();
+                final FileItem fileItem = fileItemFactory.createItem(item.getFieldName(), item.getContentType(),
+                                                   item.isFormField(), fileName);
+                items.add(fileItem);
+                try {
+                    Streams.copy(item.openStream(), fileItem.getOutputStream(), true, buffer);
+                } catch (final FileUploadIOException e) {
+                    throw (FileUploadException) e.getCause();
+                } catch (final IOException e) {
+                    throw new IOFileUploadException(String.format("Processing of %s request failed. %s",
+                                                           MULTIPART_FORM_DATA, e.getMessage()), e);
+                }
+
+看见没这里有个循环。
+
+
+max-swallow-size 我找到原文了：maxSwallowSize
+The maximum number of request body bytes (excluding transfer encoding overhead) that will be swallowed by Tomcat for an aborted upload. An aborted upload is when Tomcat knows that the request body is going to be ignored but the client still sends it. If Tomcat does not swallow the body the client is unlikely to see the response. If not specified the default of 2097152 (2 megabytes) will be used. A value of less than zero indicates that no limit should be enforced.
+
+--https://tomcat.apache.org/tomcat-8.0-doc/config/http.html
+
+有点理解不了，反正就是跟上传限制无关。这个配置多大我也不知道有什么副作用，这个swallow 的机制完全不懂

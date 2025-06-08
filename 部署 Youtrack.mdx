@@ -1,0 +1,65 @@
+---
+title: "部署 Youtrack"
+date: '2025-06-08'
+tags: ['']
+draft: false
+summary:
+---
+
+download docker image of the correct version: check existing instance: Help -> Build 2025.1.76253
+
+docker pull jetbrains/youtrack:2025.1.76253
+
+start wizard container
+
+```
+rm -rf ${youtrack_root}/*
+
+youtrack_root=/etc/systemd/files/docker/youtrack
+
+# prepare dirs
+mkdir -p ${youtrack_root}/data
+mkdir -p ${youtrack_root}/conf
+mkdir -p ${youtrack_root}/logs
+mkdir -p ${youtrack_root}/backups
+# conf dir needs special care
+chmod 777 ${youtrack_root}/ -R
+
+# create container
+docker rm -f youtrack
+docker run -d --name youtrack \
+--restart always \
+-v ${youtrack_root}/data:/opt/youtrack/data \
+-v ${youtrack_root}/conf:/opt/youtrack/conf \
+-v ${youtrack_root}/logs:/opt/youtrack/logs \
+-v ${youtrack_root}/backups:/opt/youtrack/backups \
+-p 40000:8080 \
+jetbrains/youtrack:2025.1.76253
+```
+
+wizard configuration:
+
+- setup: start a fresh instance
+- upgrade: start from a backup
+- Application Listen Port: port in the docker
+- Application Listen Address: default to 0.0.0.0 would be fine
+- Base URL: reverse proxy access point
+
+migrate data
+
+download backup file from existing instance
+
+```
+rm -f ${youtrack_root}/data
+rm -f ${youtrack_root}/conf
+
+cp THE_BACKUP_FILE ${youtrack_root}/backups
+```
+
+start again
+
+choose "upgrade" other than "setup" in the wizard
+
+After import data complete, all data including users will be overwritten.
+
+After all things done and can be accessed from reverse proxy endpoint, add -d and --restart always to the docker run command and start container to the background

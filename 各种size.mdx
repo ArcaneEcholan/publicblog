@@ -14,10 +14,11 @@ spring:
       max-request-size: 2MB
 ```
 
+```
 private void parseRequest(HttpServletRequest request) {
 handleParseFailure(ex);
 }
-
+```
 
 org.apache.tomcat.util.http.fileupload.impl.SizeLimitExceededException: the request was rejected because its size (9832149) exceeds the configured maximum (2097152)
 
@@ -93,7 +94,7 @@ read的过程中最终调了checklimit
 
 打着两个点：
 
-FileItemIteratorImpl:``
+FileItemIteratorImpl:
 final long requestSize = ((UploadContext) ctx).contentLength();
 
 
@@ -105,7 +106,7 @@ reqsize 射程 100M
 传个10M的，第一个点能过（查contentlength)，第二个点过不了（再filesize）（实际上他是拿file之前走了下multistream的init，里面有对contentlength的检查，这里没过。
 
 所以 reqsize 先查，filesize再查,而且后者是对每一个file的
-
+```
             final FileItemIterator iter = getItemIterator(ctx);
             final FileItemFactory fileItemFactory = Objects.requireNonNull(getFileItemFactory(),
                     "No FileItemFactory has been set.");
@@ -125,13 +126,13 @@ reqsize 射程 100M
                     throw new IOFileUploadException(String.format("Processing of %s request failed. %s",
                                                            MULTIPART_FORM_DATA, e.getMessage()), e);
                 }
-
+```
 看见没这里有个循环。
 
 
 max-swallow-size 我找到原文了：maxSwallowSize
 The maximum number of request body bytes (excluding transfer encoding overhead) that will be swallowed by Tomcat for an aborted upload. An aborted upload is when Tomcat knows that the request body is going to be ignored but the client still sends it. If Tomcat does not swallow the body the client is unlikely to see the response. If not specified the default of 2097152 (2 megabytes) will be used. A value of less than zero indicates that no limit should be enforced.
 
---https://tomcat.apache.org/tomcat-8.0-doc/config/http.html
+-https://tomcat.apache.org/tomcat-8.0-doc/config/http.html
 
 有点理解不了，反正就是跟上传限制无关。这个配置多大我也不知道有什么副作用，这个swallow 的机制完全不懂

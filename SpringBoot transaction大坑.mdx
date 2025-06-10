@@ -1,0 +1,44 @@
+---
+title: 'SpringBoot transaction大坑'
+date: '2025-06-10'
+tags: ['Java', 'SpringBoot']
+draft: false
+---
+
+Springboot trasaction 没有rollback,在抛出IOException之后
+
+
+以下是我追踪到的路径(调用链条自下而上):
+
+```java
+	public boolean rollbackOn(Throwable ex) {
+		return (ex instanceof RuntimeException || ex instanceof Error);
+	}
+```
+
+
+```java
+
+		if (winner == null) {
+			return super.rollbackOn(ex);
+		}
+```
+
+```java
+	protected void completeTransactionAfterThrowing(@Nullable TransactionInfo txInfo, Throwable ex) {
+		if (txInfo != null && txInfo.getTransactionStatus() != null) {
+			if (logger.isTraceEnabled()) {
+				logger.trace("Completing transaction for [" + txInfo.getJoinpointIdentification() +
+						"] after exception: " + ex);
+			}
+			if (txInfo.transactionAttribute != null && txInfo.transactionAttribute.rollbackOn(ex)) {
+                // ...
+            }
+            // ...
+        }
+    }
+```
+
+spring: 5.3.20, springboot: 2.7.0
+
+https://docs.spring.io/spring-framework/docs/5.3.20/reference/html/data-access.html#transaction-declarative-rolling-back

@@ -42,3 +42,18 @@ Springboot trasaction 没有rollback,在抛出IOException之后
 spring: 5.3.20, springboot: 2.7.0
 
 https://docs.spring.io/spring-framework/docs/5.3.20/reference/html/data-access.html#transaction-declarative-rolling-back
+
+没找到全局配置的方法，spring做得很坚决：
+
+https://docs.spring.io/spring-framework/docs/5.3.20/javadoc-api/org/springframework/transaction/interceptor/DefaultTransactionAttribute.html#rollbackOn-java.lang.Throwable-
+
+```
+	protected TransactionAttribute parseTransactionAnnotation(AnnotationAttributes attributes) {
+```
+看这里，transactional的rollbackfor从这里进去，transactionAttribute.rollbackOn除了这里进去的还有两个写死的，就是runxxxx和error。
+
+这样写就行了： 
+
+```
+@Transactional(rollbackFor = Exception.class)
+```

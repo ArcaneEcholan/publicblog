@@ -1,0 +1,246 @@
+---
+title: eslint config
+date: '2025-06-11'
+tags: ['eslint', 'js']
+draft: false
+summary:
+---
+
+# ESLint 配置结构与机制详解（仅 .eslintrc.js）
+
+
+本文深入分析 `.eslintrc.js` 配置文件的各个核心区块，包括 `extends` 来源、`plugins` 的职责和实现机制，以及规则的加载方式。
+
+
+
+## env：声明运行环境
+
+
+```js
+env: {
+  browser: true,
+  node: true,
+  es2021: true,
+}
+```
+
+
+用于声明当前代码所处的运行环境，并自动注入相应的全局变量，例如：
+
+
+- `browser: true` → 注入 `window`, `document`
+- `node: true` → 注入 `process`, `__dirname`
+
+
+## globals：声明自定义全局变量
+
+
+```js
+globals: {
+  MyGlobal: 'readonly',
+}
+```
+
+
+避免因使用未定义全局变量而触发 `no-undef` 错误。
+
+
+
+## parser 和 parserOptions：控制语法解析
+
+
+```js
+parser: '@babel/eslint-parser',
+parserOptions: {
+  ecmaVersion: 2022,
+  sourceType: 'module',
+  ecmaFeatures: { jsx: true },
+}
+```
+
+
+- `parser` 用于切换语法解析器（如 Babel、TypeScript）
+- `parserOptions` 控制语法能力，如支持模块、JSX 等
+
+
+## plugins：注册插件（提供规则实现）
+
+
+```js
+plugins: ['example']
+```
+
+
+这会加载 `eslint-plugin-example` 插件。**插件不会自动启用任何规则**，它仅注册规则、处理器、环境等功能。
+
+
+
+## **单独启用插件中的规则**
+
+
+**完全支持**如下方式启用插件中任意规则，而无需 `extends`：
+
+
+```js
+plugins: ['example'],
+rules: {
+  'example/rule1': 'error',
+}
+```
+
+
+
+`example` 是插件名，`rule1` 是插件暴露的规则名，组合起来就是 `example/rule1`。
+
+
+
+
+## rules：控制规则启用状态
+
+
+```js
+rules: {
+  'no-console': 'warn',
+  'example/rule1': ['error', { customOption: true }],
+}
+```
+
+
+- 可使用内置规则或插件规则
+- 支持字符串简写或数组形式传入参数
+
+
+## extends：继承规则集合
+
+
+```js
+extends: [
+  'eslint:recommended',
+  'plugin:react/recommended',
+  'airbnb-base',
+  './.eslintrc-custom.js',
+]
+```
+
+
+支持的来源示例：
+
+
+| 来源类型 | 示例 | 说明 |
+| ---- | ---- | ---- |
+| ESLint 内置规则 | eslint:recommended | 官方推荐基础规则 |
+| 插件提供的规则集 | plugin:react/recommended | 来自 eslint-plugin-react |
+| 第三方共享配置包 | airbnb-base | eslint-config-airbnb-base 提供 |
+| 本地文件路径 | ./.eslintrc-custom.js | 项目内部共享配置 |
+
+
+
+## settings：插件的上下文信息
+
+
+```js
+settings: {
+  react: {
+    version: 'detect',
+  },
+}
+```
+
+
+部分插件（如 `eslint-plugin-react`）依赖此字段获取额外信息。
+
+
+
+## overrides：对特定文件使用特定规则
+
+
+```js
+overrides: [
+  {
+    files: ['*.ts'],
+    parser: '@typescript-eslint/parser',
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
+]
+```
+
+
+
+## ignorePatterns：排除路径
+
+
+```js
+ignorePatterns: ['dist/**', 'node_modules/**']
+```
+
+
+让 ESLint 忽略这些路径，不参与分析与报错。
+
+
+
+## 插件如何实现规则（插件结构）
+
+
+以 `eslint-plugin-example` 为例，目录结构如下：
+
+
+```pgsql
+eslint-plugin-example/
+├── index.js
+```
+
+
+内容示例：
+
+
+```js
+// index.js
+module.exports = {
+  rules: {
+    'rule1': {
+      meta: {
+        type: 'problem',
+        docs: {
+          description: 'warn on badVar usage',
+          recommended: false,
+        },
+        messages: {
+          avoid: 'Avoid using badVar.',
+        },
+        schema: [],
+      },
+      create(context) {
+        return {
+          Identifier(node) {
+            if (node.name === 'badVar') {
+              context.report({
+                node,
+                messageId: 'avoid',
+              });
+            }
+          },
+        };
+      },
+    },
+  },
+  configs: {
+    recommended: {
+      rules: {
+        'example/rule1': 'error',
+      },
+    },
+  },
+};
+```
+
+
+
+## 结语
+
+
+- `extends` 用于继承规则集
+- `plugins` 用于注册规则实现
+- **可通过 rules 精确启用插件中任意一条规则**
+- 插件是 ESLint 可扩展性和生态繁荣的核心机制

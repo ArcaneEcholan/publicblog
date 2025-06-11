@@ -1,0 +1,190 @@
+---
+title: eslint plugin
+date: '2025-06-11'
+tags: ['eslint', 'js']
+draft: false
+summary:
+---
+
+# ESLint 是如何实现 Lint 的？从 Rule 到生态系统的全景解读
+
+
+**ESLint 是如何发现你代码中的问题并给出建议的？**
+
+
+很多人以为 ESLint 的“规则”只是配置层的选项，其实不然。**ESLint 的核心就是 “Rule” 系统：每一条 lint 结果，都是某条规则在代码抽象语法树（AST）上的运行结果。** 本文将从 `Rule` 出发，逐步揭示 ESLint 的 lint 工作流与支持体系。
+
+
+
+## 什么是 Rule？
+
+
+一个 ESLint 规则（Rule）是一个遵循 ESLint 插件接口的对象，它会在 AST 遍历时**监听某些节点**，并**在匹配条件时报告问题**。
+
+
+最小示例：
+
+
+```js
+// 禁用名为 badVar 的标识符
+module.exports = {
+  meta: {
+    type: 'problem',
+    docs: {
+      description: 'disallow usage of badVar',
+    },
+    messages: {
+      avoid: 'Avoid using badVar.',
+    },
+    schema: [],
+  },
+  create(context) {
+    return {
+      Identifier(node) {
+        if (node.name === 'badVar') {
+          context.report({
+            node,
+            messageId: 'avoid',
+          });
+        }
+      },
+    };
+  },
+};
+```
+
+
+
+## ESLint 是如何执行这些规则的？
+
+
+整个 lint 过程如下：
+
+
+```text
+源码字符串 → AST（抽象语法树） → 遍历 + Rule hook 执行 → lint 报告
+```
+
+
+流程拆解：
+
+
+| 阶段 | 描述 |
+| ---- | ---- |
+| **解析源码** | 使用 espree（或自定义 parser）将 JS 代码转为 AST |
+| **加载规则** | 根据 rules 与 plugins 配置加载规则实现 |
+| **遍历 AST** | 使用内部访问器，依次调用规则中监听的节点类型方法 |
+| **生成报告** | 每当 context.report() 被调用时，结果被收集形成最终输出 |
+
+
+
+## Rule 的运行机制：基于 Visitor 模式的钩子系统
+
+
+在 ESLint 中，每个 Rule 的 `create()` 返回一个对象，它的 key 是 AST 节点类型，例如：
+
+
+```js
+return {
+  Identifier() { ... },
+  CallExpression() { ... },
+  "BinaryExpression[left.name='foo']"() { ... }
+}
+```
+
+
+这些实际上是**访问器钩子（visitor hooks）**，由 ESLint 的核心遍历器（基于 [estraverse]()）在遍历 AST 时调用。
+
+
+
+所有规则的钩子是平行执行的，彼此之间无感知。
+
+
+
+
+## Rule 如何报告问题？
+
+
+```js
+context.report({
+  node,
+  messageId: 'avoid',
+});
+```
+
+
+- `context` 是由 ESLint 提供的运行时 API，上下文对象
+- `context.report()` 会将报错信息存入 lint 结果集合
+- messageId 引用 `meta.messages` 中定义的错误模板
+
+
+## ESLint 是如何支持 Rule 的？
+
+
+围绕 Rule，ESLint 构建了如下基础设施：
+
+
+###  插件系统
+
+
+- 每个插件通过 `module.exports = { rules: {} }` 暴露规则集合
+- 可通过 `plugins: ['xxx']` 注册插件
+- 配合 `rules: { 'xxx/rule-name': 'error' }` 使用
+- 插件还可提供：
+
+
+`configs`（推荐规则集合）
+
+
+`processors`（预处理器）
+
+
+`environments`（注入 globals）
+
+###  共享配置机制
+
+
+- 通过 `extends` 继承已有规则集合
+- ESLint 提供了如 `eslint:recommended` 等内建规则集
+- 社区如 `airbnb`, `standard`, `prettier` 等广泛采用
+
+### 自动修复机制（Auto-fix）
+
+
+若规则支持 `fix`，可在 `context.report` 中添加 `fix(fixer)`：
+
+
+```js
+context.report({
+  node,
+  messageId: 'avoid',
+  fix(fixer) {
+    return fixer.replaceText(node, 'goodVar');
+  }
+});
+```
+
+
+- 触发方式：`eslint --fix`
+- fixer 是一个封装文本编辑操作的 API，如 `replaceText`, `insertTextBefore`
+
+
+## 为什么说 Rule 是 ESLint 的“灵魂”？
+
+
+- 每一个 warning 或 error，背后都是某条 Rule 的判断逻辑
+- ESLint 本身没有“规则”——它只是一个规则调度器和 AST 遍历器
+- 所有的 lint 能力、生态、可扩展性都建立在 Rule 的标准化协议之上
+
+
+## 总结
+
+
+ESLint 的 lint 流程是 AST → Rule → 结果。**Rule 是真正“懂代码”的部分，其它模块只负责托管与调度。**
+
+
+- 你可以单独启用任意插件中的规则
+- 你可以自己编写自定义 Rule 来适配业务代码风格
+- 你甚至可以构建一整套规则插件，发布到 npm 上
+
+换句话说，ESLint 的所有能力都可还原为一系列 Rule 的运行。只有理解了 Rule，你才真正理解了 ESLint 是如何工作的。

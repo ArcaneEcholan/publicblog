@@ -1,0 +1,110 @@
+---
+title: '加密封装实体的 Asn1 记录'
+date: '2025-06-13'
+tags: ['asn1', '密码学']
+draft: false
+summary:
+---
+
+这些结构（如 `EncryptedContentInfo`, `AlgorithmIdentifier`）**并不属于 ASN.1 基础语言规范本身**，而是属于在 ASN.1 语法上**定义的数据结构**，出现在高层协议标准（如 RFC 5652）中。
+
+---
+
+###  区分两者概念：
+
+| 类别 | 示例 | 定义作用 | 所属标准 |
+| --- | --- | --- | --- |
+| **ASN.1 语言规范** | `SEQUENCE`, `CHOICE`, `OCTET STRING` | 描述结构的语法和编码规则 | ITU-T X.680 ～ X.690 系列 |
+| **ASN.1 定义结构** | `EncryptedContentInfo`, `AlgorithmIdentifier` | 使用 ASN.1 语法定义的加密/签名结构 | RFC 5280（X.509）, RFC 5652（CMS） |
+
+---
+
+###  ASN.1 是一种**描述语言**，不是“标准库”
+
+ASN.1（Abstract Syntax Notation One）只是语法 + 编码规范：
+
+-   **语法定义**：类似 JSON Schema 或 protobuf 的 schema
+
+-   **编码规则**：包括 BER、DER、CER 等（参见 X.690）
+
+
+它**不提供结构本身**，就像 JSON 语法不自带 `user`, `message` 结构一样。
+
+---
+
+###  这些结构来源于哪？
+
+| 结构名 | 所属协议规范 | 说明 |
+| --- | --- | --- |
+| `AlgorithmIdentifier` | RFC 5280 | 所有签名、公钥、对称算法通用的算法标识结构 |
+| `EncryptedContentInfo` | RFC 5652 | CMS（PKCS#7）用于封装加密内容的结构 |
+| `EnvelopedData` | RFC 5652 | 数字信封的主结构 |
+| `SignedData` | RFC 5652 | 签名数据的封装结构 |
+
+---
+
+###  国密中的类似结构（GM/T 0010）
+
+中国密码标准 **GM/T 0010-2012** 借用了 CMS 的封装思想（即 `EnvelopedData`、`SignedData`），也使用 ASN.1 定义结构，只不过算法是 SM 系列。
+
+你在 GM/T 0010 标准的附录中会看到完整的 ASN.1 结构定义，和 RFC 5652 是高度对应的。
+
+---
+
+以下是关于 `contentEncryptionAlgorithm` 所涉及结构的定义表格，包括 **结构名**、**ASN.1 定义出处**、以及其**简要描述**：
+
+| **结构名** | **定义出处** | **简要描述** |
+| --- | --- | --- |
+| `EncryptedContentInfo` | RFC 5652 §6.1 | 加密内容封装结构，包含加密类型、算法和密文。 |
+| `contentEncryptionAlgorithm` | 引用自 `EncryptedContentInfo` | 表示用于加密内容的算法及其参数，类型为 `AlgorithmIdentifier`。 |
+| `AlgorithmIdentifier` | RFC 5280 §4.1.1.2 | 表示加密/签名算法标识，包括 `OID` 和可选参数字段。 |
+| `ContentEncryptionAlgorithmIdentifier` | RFC 5652 §2.7 | `AlgorithmIdentifier` 的别名，用于特指内容加密算法标识。 |
+| `ContentType` | RFC 5652 §3 | 一个 `OBJECT IDENTIFIER`，表示封装内容类型，如 `data`、`signedData` 等。 |
+| `EncryptedContent` | RFC 5652 §6.1 | `OCTET STRING` 类型，用于表示加密后的内容。 |
+| `EncryptedContent` | RFC 5652 §6.1 | `OCTET STRING` 类型，用于表示加密后的内容。 |
+---
+
+### 示例关系图（结构嵌套）
+
+```text
+EncryptedContentInfo
+├── contentType                         (OBJECT IDENTIFIER)
+├── contentEncryptionAlgorithm         (AlgorithmIdentifier)
+│   ├── algorithm                      (OID，如 SM4-CBC)
+│   └── parameters                     (如 IV)
+└── encryptedContent                   (OPTIONAL OCTET STRING)
+```
+
+---
+
+### SM4 的算法标识（扩展）
+
+| **算法名称** | **OID** | **参数类型** | **用途说明** |
+| --- | --- | --- | --- |
+| SM4-CBC | `1.2.156.10197.1.104` | `OCTET STRING` | 国密对称加密，支持 CBC 模式 |
+
+---
+
+
+```
+// 国密算法标识
+org.bouncycastle.asn1.gm;
+
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+
+public interface GMObjectIdentifiers
+
+// pkcs算法标识
+package org.bouncycastle.asn1.pkcs;
+
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+
+/**
+ * pkcs-1 OBJECT IDENTIFIER ::=<p>
+ *   { iso(1) member-body(2) us(840) rsadsi(113549) pkcs(1) 1 }
+ *
+ */
+public interface PKCSObjectIdentifiers
+```
+
+这里记录一个很全的oid查询库：https://oidref.com/2.16.840.1.101.3.4.1 (示例的是aes及其变种的oid列表)

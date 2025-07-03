@@ -1,0 +1,170 @@
+---
+title: "File Inode"
+date: '2025-07-03'
+tags: ['filesystem', 'linux']
+draft: false
+summary:
+---
+
+# 前言
+
+不关闭文件（fd，或者文件流）会导致文件 inode 不被释放，在用temp文件利用磁盘空间的时候，这尤为可能成为很大的问题。因为一堆没有关闭的流或者fd可能在进程或者的时候在磁盘上造成一堆幽灵空间。（delete但是inode仍然存在的inode）
+
+inode 可能被 dirent 和 open file table entry 引用，只有二者的引用计数都归零之后，文件inode才得以删除。
+
+接下来的时间，交给 gpt，开始它的表演（我没审查内容）。
+
+# 理解 Linux 中文件访问的核心机制：fd、open file、inode 与数据块全景图
+
+在日常 Java/C/Linux 编程中，你可能遇到过如下现象：
+
+-   文件已经 `delete()`，但 `df` 显示磁盘空间没释放；
+
+-   使用 `dup()` 后写入的数据顺序不对；
+
+-   多进程访问同一个文件，数据错乱；
+
+
+这些都指向了 Linux 文件系统底层结构的一个核心事实：**你操作的文件并不是一个简单的句柄，而是一套复杂的三层结构在协同工作。**
+
+本文尝试从底层结构出发，把这些核心概念讲清楚：
+
+---
+
+## 一、完整结构图：进程到磁盘的五层关系
+
+```text
+[用户空间]
++-------------------------------+
+|         进程 (PID)            |
++-------------------------------+
+| 文件描述符表 (FD table)       |   ← 每个进程私有
+|  fd 0 → open file entry [X]   |
+|  fd 1 → open file entry [Y]   |
++-------------------------------+
+            |             |
+            v             v
+      +-----------------------------+
+      |     Open File Table         |  ← 内核全局共享
+      |  entry X: offset, flags, → inode I1
+      |  entry Y: offset, flags, → inode I2
+      +-----------------------------+
+                        |
+                        v
+                +------------------+
+                |     inode (I1)   | ← 文件元数据（不含路径）
+                +------------------+
+                        |
+                        v
+               +--------+---------+
+               |  data block(s)   | ← 实际文件内容
+               +------------------+
+
+        ↑
+        |
++----------------------------+
+|     dirent（目录项）       | ← 路径名映射 inode（link/unlink 的目标）
+| "/tmp/foo.txt" → inode I1 |
++----------------------------+
+```
+
+---
+
+## 二、关键结构概念简述
+
+| 结构 | 说明 |
+| --- | --- |
+| **fd** | 用户进程视角的文件句柄，是一个索引值（整数） |
+| **open file entry** | 内核的打开状态，记录 offset、flags、inode 指针 |
+| **inode** | 文件本体的元数据，不包含路径名 |
+| **data block** | 文件内容的物理存储 |
+| **dirent** | 目录项，路径名映射到 inode，`link`/`unlink` 操的就是它 |
+
+---
+
+## 三、为什么需要 fd？为什么不直接暴露 open file entry？
+
+很多人疑问：既然 open file entry 记录了 offset、flags，干嘛还要 fd 这一层？直接给用户用不是更简单？
+
+**答案：fd 是设计上的隔离、抽象、安全机制。**
+
+### ✅ 设计意义：
+
+| fd 带来的能力 | 说明 |
+| --- | --- |
+| **安全隔离** | 每个进程的 fd 表私有，无法直接影响其他进程 |
+| **资源抽象** | 所有 I/O 资源（文件/socket/pipe/device）统一变成 fd |
+| **共享语义** | 多个 fd → 同一个 open file entry（如 `dup()`） |
+| **多态语义** | 多个 fd → 不同 entry → 同一个 inode（如两次 `open()`） |
+| **系统调用简化** | 所有接口都是 `read(fd, ...)` 风格，用户只操 fd，内核做映射 |
+
+---
+
+## 四、unlink 和 link 操作的是什么？
+
+它们**不涉及 fd，也不涉及 open file entry**，而是操作 **目录项 dirent**：
+
+```text
+路径名 "/tmp/a.txt" → dirent → inode 1234
+```
+
+### ✅ 操作行为：
+
+| 操作 | 意义 |
+| --- | --- |
+| `unlink(path)` | 删除一个路径 → inode link count -1 |
+| `link(old, new)` | 增加一个路径 → inode link count +1 |
+
+inode 只有在：
+
+```text
+link count == 0 && open count == 0
+```
+
+时才被彻底释放（即 inode + data block 真正回收）
+
+---
+
+## 五、dup() 共享偏移和 flags 的实际意义
+
+### ✅ 示例代码：共享偏移
+
+```c
+int fd1 = open("log.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+int fd2 = dup(fd1);
+
+write(fd1, "abc", 3);  // offset 变成 3
+write(fd2, "XYZ", 3);  // offset 从 3 接着写
+```
+
+📄 输出：`abcXYZ`
+
+→ `fd1` 和 `fd2` 共享一个 open file entry，因此写偏移是连续的。
+
+---
+
+### ✅ 示例代码：共享 flags（如 O\_APPEND）
+
+```c
+int fd1 = open("log.txt", O_WRONLY | O_APPEND);
+int fd2 = dup(fd1);
+
+lseek(fd2, 0, SEEK_SET);
+write(fd2, "AAA", 3);  // 仍然追加到文件末尾
+```
+
+→ `dup` 复制的是“访问状态”，即 open file entry 指针，不是 inode 或文件副本。
+
+---
+
+## 六、总结对照表
+
+| 层级 | 数据结构 | 属于谁 | 作用 |
+| --- | --- | --- | --- |
+| 应用层 | `fd` | 每进程私有 | 映射到 open file entry，系统调用入口 |
+| 内核层 | open file entry | 全局共享 | 持有 offset、flags、inode 指针 |
+| 文件系统层 | `inode` | 全系统唯一 | 文件元信息、指向数据块 |
+| 存储层 | data block | 块设备 | 实际存放内容 |
+| 文件名层 | dirent（目录项） | 每目录存在 | 名称 → inode 映射关系，受 `link`/`unlink` 操作影响 |
+
+---

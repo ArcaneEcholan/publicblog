@@ -1,0 +1,27 @@
+---
+title: '前端开发札记'
+date: '2025-07-29'
+tags: ['前端', 'React']
+draft: false
+summary:
+---
+
+## Material UI onContextMenu 事件在 iphone 浏览器上无法弹出菜单
+
+"@mui/material": "^7.1.0" card onContextMenu
+
+```jsx
+<Card onContextMenu={(e) => handleLongPress(e, item)}>
+    <CardContent sx={{ width: "100%", height: "100%" }}>
+        <Typography variant="subtitle1">
+            {item.label}
+        </Typography>
+    </CardContent>
+</Card>
+```
+
+在 iphone 上不生效（pc 右键可以弹出菜单，android 长按可以弹出菜单）
+
+原因在一个 github issue 中有讨论：https://github.com/mui/material-ui/issues/33444 ，iphone 不支持 context menu：https://developer.mozilla.org/en-US/docs/Web/API/Element/contextmenu_event
+
+> This feature is not Baseline because it does not work in some of the most widely-used browsers.（你猜这说的是哪个浏览器）

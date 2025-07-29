@@ -1,0 +1,217 @@
+---
+title: "有用没用的代码片段.mdx"
+date: '2025-07-29'
+tags: ['']
+draft: false
+summary:
+---
+
+## 前端热部署
+
+tags: springboot 2.7.0, 前端热部署, hot deploy
+
+```java
+import lombok.*;
+import lombok.extern.slf4j.*;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.annotation.*;
+import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.boot.autoconfigure.web.*;
+import org.springframework.boot.web.servlet.error.*;
+import org.springframework.core.env.*;
+import org.springframework.core.io.*;
+import org.springframework.http.*;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Controller;
+import org.springframework.util.*;
+import org.springframework.web.bind.annotation.*;
+import javax.servlet.http.*;
+import java.io.File;
+import java.nio.charset.*;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Slf4j
+@Controller
+public class ExtraErrorController implements ErrorController {
+
+    @Autowired
+    Environment env;
+    @Autowired
+    ResourceLoader resourceLoader;
+    @Autowired
+    WebProperties webProperties;
+
+    /**
+     * handles exceptions outside business logic, such as those from the spring framework (e.g., route not found) that
+     * can’t be customized through regular exception handling. this includes exceptions not handled by
+     * `exceptionHappened` — most commonly used for custom 404 pages.
+     */
+    @RequestMapping("/error")
+    @SneakyThrows
+    public ResponseEntity handleExtraEx(HttpServletRequest request, HttpServletResponse response) {
+        log.debug("> Handle Extra Exception");
+
+        HttpServletRequest req = request;
+        HttpServletResponse resp = response;
+
+        if (request instanceof HttpServletRequestWrapper) {
+            var httpServletRequestWrapper = (HttpServletRequestWrapper) request;
+            req = (HttpServletRequest) httpServletRequestWrapper.getRequest();
+
+            // Any other exception caused by Controller but not handled by
+            // MvcHookException::exceptionHappened(),
+            // or not caused by Controller(including validation), will be forwarded here.
+
+            // For example, when spring throws a handler_mapping_not_found (route not found),
+            // you have the right to decide what to return.
+
+            // NOTE: None of MvcHookAround::*(*) will be involved around this handler.
+
+            int statusCode = response.getStatus();
+
+            // deal with static not found (especially useful for SPA)
+            if (statusCode == HttpStatus.NOT_FOUND.value()) {
+
+                var headers = new HttpHeaders();
+                headers.add(HttpHeaders.CONTENT_TYPE, "text/html; charset=UTF-8");
+
+                String pageHtml = null;
+
+                // the target search order matters!
+
+                String serveMode = "vuejs";
+                if (Objects.equals(serveMode, "vuejs")) {
+                    // for vuejs static page strategy(js router vue-router handles routing)
+                    pageHtml = readResUtf8("index.html");
+                    if (pageHtml != null) {
+                        return new ResponseEntity(pageHtml, headers, HttpStatus.OK);
+                    }
+                } else if (Objects.equals(serveMode, "nextjs")) {
+                    // for nextjs static page strategy(append .html to uri)
+                    pageHtml = readResUtf8(req.getRequestURI() + ".html");
+                    if (pageHtml != null) {
+                        return new ResponseEntity(pageHtml, headers, HttpStatus.OK);
+                    }
+                    pageHtml = readResUtf8("404.html");
+                    if (pageHtml != null) {
+                        return new ResponseEntity(pageHtml, headers, HttpStatus.OK);
+                    }
+                }
+
+                return new ResponseEntity(pageHtml, headers, HttpStatus.NOT_FOUND);
+            }
+        }
+
+        return ResponseEntity.internalServerError().build();
+    }
+
+    @SneakyThrows
+    String readResUtf8(String relativePath) {
+        var finder = new StaticResourceFinder(
+                StaticResourceFinder.getConfiguredStaticLocations(webProperties.getResources()), resourceLoader);
+        var r = finder.findStaticResource(relativePath);
+        if (r != null) {
+            return StreamUtils.copyToString(r.getInputStream(), StandardCharsets.UTF_8);
+        }
+
+        return null;
+    }
+
+    public static class StaticResourceFinder {
+
+        private final List<String> staticLocations;
+        private final ResourceLoader resourceLoader;
+
+        public StaticResourceFinder(List<String> staticLocations, ResourceLoader resourceLoader) {
+            this.staticLocations = staticLocations;
+            this.resourceLoader = resourceLoader;
+        }
+
+        public Resource findStaticResource(String path) {
+            for (String location : staticLocations) {
+                String fullPath = location + path;
+                Resource resource = resourceLoader.getResource(fullPath);
+                try {
+                    if (resource.exists() && resource.isReadable()) {
+                        return resource;
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+            return null;
+        }
+
+        public static List<String> getConfiguredStaticLocations(WebProperties.Resources resources) {
+            return Arrays.asList(resources.getStaticLocations());
+        }
+    }
+
+    @Slf4j
+    @Component
+    public static class StaticLocationBeanPostProcessor implements BeanPostProcessor {
+
+        @Autowired
+        private Environment environment;
+
+        public static boolean isValidDirectory(String path) {
+            if (path.isEmpty()) {
+                return false;
+            }
+
+            File file = new File(path);
+
+            if (!file.isAbsolute()) {
+                log.warn("'serve_static' must be absolute path");
+                return false;
+            }
+            if (!path.endsWith(File.separator)) {
+                log.warn("'serve_static' must end with " + File.separator);
+                return false;
+            }
+            if (!file.exists()) {
+                log.warn("'serve_static' not exist");
+                return false;
+            }
+            if (!file.isDirectory()) {
+                log.warn("'serve_static' must be a dir");
+                return false;
+            }
+
+            return true;
+        }
+
+        @Override
+        public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+            if (bean.getClass() == WebProperties.class) {
+                String serveMode = "vuejs";
+                if (Objects.equals(serveMode, "vuejs")) {
+
+                } else if (Objects.equals(serveMode, "nextjs")) {
+
+                } else {
+                    throw new RuntimeException("invalid 'serve_mode', should be one of [\"vuejs\", \"nextjs\"]");
+                }
+
+                String serveStatic = environment.getProperty("serve_static");
+                if (serveStatic == null) {
+                    return bean;
+                }
+
+                if (isValidDirectory(serveStatic)) {
+                    WebProperties w = (WebProperties) bean;
+                    String[] staticLocations = w.getResources().getStaticLocations();
+                    List<String> collect = Arrays.stream(staticLocations).collect(Collectors.toList());
+                    collect.add("file:" + serveStatic);
+                    w.getResources().setStaticLocations(collect.toArray(new String[] {}));
+                    return bean;
+                }
+
+                throw new RuntimeException("invalid 'serve_static' ");
+            }
+
+            return bean;
+        }
+    }
+}
+```

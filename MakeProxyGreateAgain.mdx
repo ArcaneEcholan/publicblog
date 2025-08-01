@@ -6,6 +6,37 @@ draft: false
 summary:
 ---
 
+## pip
+
+> https://pip.pypa.io/en/stable/topics/configuration/
+
+**临时**
+
+```shell
+pip install some-package -i https://pypi.tuna.tsinghua.edu.cn/simpl
+```
+
+**持久化**
+
+```shell
+vi ~/.pip/pip.conf
+```
+
+更改源
+```
+[global]
+index-url = https://pypi.tuna.tsinghua.edu.cn/simple
+timeout = 10
+
+[install]
+trusted-host = pypi.tuna.tsinghua.edu.cn
+```
+
+```shell
+# 验证
+pip config list
+```
+
 ## npm
 
 ### Source
@@ -20,11 +51,22 @@ https://docs.npmjs.com/cli/v10/using-npm/config#https-proxy
 
 https://docs.npmjs.com/cli/v10/using-npm/config#registry
 
-```sh
-npm config ls -l | grep proxy
+**临时**
 
+```shell
+npm install some-packages --registry=https://registry.npmmirror.com
+```
+
+**持久化**
+
+```sh
+# 换源
 npm config delete registry
 npm config set registry https://registry.npmmirror.com
+npm get registry # 验证
+
+# 走代理
+npm config ls -l | grep proxy
 
 npm config set https-proxy http://<username>:<password>@<proxy-server-url>:<port>
 npm config set proxy http://<username>:<password>@<proxy-server-url>:<port>

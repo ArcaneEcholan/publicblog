@@ -1,0 +1,33 @@
+---
+title: 'React 规则怪谈'
+date: '2025-08-01'
+tags: ['react']
+draft: false
+summary:
+---
+
+## useState: 每轮Render都生成新的指针和被指向的object。
+
+```jsx
+    const [span, setSpan] = useState(5); // 10 分钟
+    const [finalSpan, setFinalSpan] = useState(span);
+
+    const [smoothingSec, setSmoothingSec] = useState(20); // 20 秒
+    const [finalSmoothingSec, setFinalSmoothingSec] = useState(smoothingSec);
+
+    const debounceTimer = useRef(null);
+    const handleSliderChange = (type, value) => {
+        if (type === "span") setSpan(value);
+        else if (type === "spacing") setSmoothingSec(value);
+
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        debounceTimer.current = setTimeout(() => {
+            setFinalSpan(span);
+            setFinalSmoothingSec(smoothingSec);
+        }, 500); // 500ms 防抖
+    };
+```
+
+拖动滑块改变span和smoothsec的值之后，假设value是25， setSpan （或者另一个）被调用，在 settimeout回调中的 span 值将依然是25，因为回调闭包绑定的变量是上一轮的 span，而不是更改后的 span(45)。
+
+span 在此轮和下一轮根本不是同一个指针变量。

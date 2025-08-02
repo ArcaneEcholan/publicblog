@@ -1,0 +1,47 @@
+---
+title: '规则怪谈-MySQL查询'
+date: '2025-08-02'
+tags: ['数据库', 'MySQL', '查询']
+draft: false
+summary:
+---
+
+## 尽量避免查询不必要的字段，否则可能导致回表。
+
+**场景**：查询时序监控数据，需按时间排序。未加过滤条件，整表查询后再过滤。
+
+```sql
+-- 表定义
+CREATE TABLE IF NOT EXISTS `metrics` (
+  `id` VARCHAR(255) NOT NULL,
+  `tags` VARCHAR(255),
+  `value` DOUBLE,
+  `ts` BIGINT,
+  PRIMARY KEY (`id`),
+  KEY `idx_tags` (`tags`),
+  KEY `idx_ts` (`ts`)
+);
+
+-- 问题查询
+SELECT * FROM db.metrics ORDER BY ts DESC;
+-- 耗时约 1s
+```
+
+查询耗时随 LIMIT 增大而增加，LIMIT 1 几乎无延迟，LIMIT 100000 接近 1s（与不加 LIMIT 相似）。数据量约 10 万行。
+
+**原因**：大量回表。
+ORDER BY 使用 `ts` 二级索引定位主键，再逐条访问主索引获取完整数据。
+SELECT * 导致每行都需回表，LIMIT 越大，IO 与内存开销越高。
+
+**方案 1**：仅查询所需字段（使用覆盖索引）
+
+```sql
+SELECT ts, `value` FROM db.metrics ORDER BY ts DESC LIMIT 100000;
+-- 耗时约 0.05s
+```
+
+**方案 2**：建立包含所需字段的覆盖索引。
+
+**回表说明**：
+回表是指通过二级索引（如 ts）找到主键，再去聚簇索引取完整行数据。
+索引页顺序读取较快，回表涉及随机 IO 或 CPU 缓存未命中，即使 OS 缓存也消耗资源。

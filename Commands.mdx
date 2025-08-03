@@ -42,10 +42,10 @@ Extract Gz
 
 ```shell
 #  不含隐藏文件，没有首层，首层就是选定的所有文件
-tar -cvf archive.tar ./*
-tar -cvf archive.tar .
+tar -czvf archive.tar.gz ./*
+tar -czvf archive.tar.gz .
 
 # 解压到当前目录
-tar xf archive.tar
-tar xf archive.tar -C .
+tar xf archive.tar.gz
+tar xf archive.tar.gz -C .
 ```

@@ -1,0 +1,51 @@
+---
+title: 'Commands'
+date: '2025-08-03'
+tags: ['']
+draft: false
+summary:
+---
+
+```shell
+~/.config
+
+/etc/systemd/system
+/etc/systemd/files
+/etc/smd/files
+```
+
+List Services
+
+```shell
+systemctl list-unit-files --type=service
+systemctl list-unit-files --type=service --state=enable
+systemctl list-unit-files --type=service --state=disable
+```
+
+Add Service
+
+```shell
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl enable clash
+sudo systemctl restart clash
+sudo systemctl status clash
+```
+
+DNS Delay
+```shell
+dig +stats raymond.mydarkcloud.info
+dig @8.8.8.8 +stats raymond.mydarkcloud.info
+```
+
+Extract Gz
+
+```shell
+#  不含隐藏文件，没有首层，首层就是选定的所有文件
+tar -cvf archive.tar ./*
+tar -cvf archive.tar .
+
+# 解压到当前目录
+tar xf archive.tar
+tar xf archive.tar -C .
+```

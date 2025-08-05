@@ -9,9 +9,10 @@ summary:
 ```shell
 ~/.config
 
-/etc/systemd/system
+/etc/systemd/system/clash.service
 /etc/systemd/files
 /etc/smd/files
+/etc/smd/services
 ```
 
 List Services
@@ -30,6 +31,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable clash
 sudo systemctl restart clash
 sudo systemctl status clash
+journalctl -fu clash.service
 ```
 
 DNS Delay

@@ -1,0 +1,31 @@
+---
+title: '规则怪谈-Shell'
+date: '2025-08-07'
+tags: ['shell', 'linux']
+draft: false
+summary:
+---
+
+## 引号中不生效的通配符
+
+未加引号的 * 会在执行前被 shell 展开（称为 pathname expansion 或 glob）
+
+```shell
+
+# 假设当前目录下有文件 a.txt b.txt
+
+echo *
+# 输出：a.txt b.txt
+
+echo "*"
+# 输出：*  ← 不是文件列表，是字面量
+
+echo ./*
+# 输出：./a.txt ./b.txt
+
+echo "./*"
+# 输出：./*  ← 字面量，不展开
+
+cp ${module_name}/target/lib/* "${lib_dir}"   # ✅ 正确：* 被 shell 展开
+cp "${module_name}/target/lib/*" "${lib_dir}" # ❌ 错误：* 被当成普通字符，路径无效
+```

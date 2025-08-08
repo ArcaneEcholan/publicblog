@@ -6,7 +6,10 @@ draft: false
 summary:
 ---
 
-## useState: 每轮Render都生成新的指针和被指向的object。
+## useState: 实质是一个指针变量，只不过多了几个特性：
+
+* 调用 setXXX，代表触发页面重新渲染.
+* 无论是哪种形式的setXXX，其内部的lambda只会在渲染时生效。
 
 ```jsx
     const [span, setSpan] = useState(5); // 10 分钟

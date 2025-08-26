@@ -6,6 +6,15 @@ draft: false
 summary:
 ---
 
+## apt
+
+走代理
+
+```shell
+sudo https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890  apt update
+sudo https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890  apt install -y python3.11 python3.11-distutils python3.11-venv
+```
+
 ## pip
 
 > https://pip.pypa.io/en/stable/topics/configuration/

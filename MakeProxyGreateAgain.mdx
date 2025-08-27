@@ -17,6 +17,8 @@ sudo https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890  apt ins
 
 ## pip
 
+更换源头
+
 > https://pip.pypa.io/en/stable/topics/configuration/
 
 **临时**
@@ -50,6 +52,12 @@ trusted-host = pypi.tuna.tsinghua.edu.cn
 ```shell
 # 验证
 pip config list
+```
+
+更换代理：
+
+```shell
+pip install some-package -i https://pypi.org/simple --proxy http://vpnserver:7890
 ```
 
 ## npm

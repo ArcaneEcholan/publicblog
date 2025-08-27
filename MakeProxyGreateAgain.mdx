@@ -25,6 +25,12 @@ sudo https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890  apt ins
 pip install some-package -i https://pypi.tuna.tsinghua.edu.cn/simpl
 ```
 
+有些包在国内源找不到（比如mcp-openapi-proxy），官方源：
+
+```shell
+pip install some-package -i https://pypi.org/simple
+```
+
 **持久化**
 
 ```shell

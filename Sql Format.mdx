@@ -1,0 +1,60 @@
+---
+title: "Sql Format"
+date: "2025-09-04"
+tags: [""]
+draft: false
+summary:
+---
+
+.prettierrc.json
+```
+{
+  "plugins": ["prettier-plugin-sql-cst"],
+  "overrides": [
+    {
+      "files": ["*.sql", "*.vm"],
+      "options": {
+        "parser": "mysql",
+        "sqlAcceptUnsupportedGrammar": false
+      }
+    }
+  ]
+}
+```
+
+package.json
+```
+{
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "prettier-plugin-sql-cst": "^0.13.0"
+  }
+}
+```
+
+sql.sql
+```
+CREATE TABLE IF NOT EXISTS `${prefix}ep_settings${suffix}` (
+
+
+  `id` VARCHAR(255) NOT NULL COMMENT 'Primary key (UUID)',
+  `endpoint_id` VARCHAR(255) DEFAULT NULL COMMENT 'Endpoint ID',
+  `key` VARCHAR(255) DEFAULT NULL COMMENT 'Key',
+  `value` VARCHAR(255) DEFAULT NULL COMMENT 'Value',
+  PRIMARY KEY (`id`)
+);
+```
+
+
+### 格式化命令（本地/全局均适用）
+
+```bash
+# 格式化文件
+npx prettier --plugin=prettier-plugin-sql-cst --write ./sql.sql
+```
+
+或者指定 parser（例如 bigquery/sqlite）：
+
+```bash
+npx prettier --plugin=prettier-plugin-sql-cst --parser sqlite --write ./sql.sql
+```

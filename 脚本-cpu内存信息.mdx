@@ -1,0 +1,147 @@
+---
+title: "脚本-cpu 内存信息脚本"
+date: '2025-09-03'
+tags: ['linux', 'shell']
+draft: false
+summary:
+---
+
+测过环境：ubuntu 20.04
+
+```
+#!/bin/bash
+# proc-info.sh — CPU & Memory info from /proc only (no lscpu/dmidecode)
+
+set -euo pipefail
+
+# ---------- helpers ----------
+trim() { sed 's/^[[:space:]]*//; s/[[:space:]]*$//'; }
+
+kv() { # print aligned key: value
+  printf "%-22s %s\n" "$1" "$2"
+}
+
+# ---------- CPU ----------
+cpuinfo_raw="$(cat /proc/cpuinfo)"
+
+# logical CPUs
+logical_cpus="$(awk -F: '/^processor[[:space:]]*:/ {n++} END{print n+0}' /proc/cpuinfo)"
+
+# vendor / model name (handle x86/ARM variants)
+vendor="$(awk -F: '
+  /^vendor_id[[:space:]]*:/ {print $2; exit}
+  /^Hardware[[:space:]]*:/  {print $2; exit}
+  /^Processor[[:space:]]*:/ {print $2; exit}
+' /proc/cpuinfo | trim || true)"
+vendor="${vendor:-unknown}"
+
+model_name="$(awk -F: '
+  /^model name[[:space:]]*:/ {print $2; exit}
+  /^Processor[[:space:]]*:/  {print $2; exit}
+' /proc/cpuinfo | trim || true)"
+model_name="${model_name:-unknown}"
+
+# family/model/stepping (x86); may be absent on ARM
+cpu_family="$(awk -F: '/^cpu family[[:space:]]*:/ {print $2; exit}' /proc/cpuinfo | trim || true)"
+model_num="$(awk -F: '/^model[[:space:]]*:/ {print $2; exit}' /proc/cpuinfo | trim || true)"
+stepping="$(awk -F: '/^stepping[[:space:]]*:/ {print $2; exit}' /proc/cpuinfo | trim || true)"
+
+# sockets (x86 has "physical id"); fallback = 1
+sockets="$(awk -F: '
+  /^physical id[[:space:]]*:/ {pid[$2]=1}
+  END{c=0; for(k in pid) c++; if(c==0) c=1; print c}
+' /proc/cpuinfo | trim)"
+# cores per socket (x86 has "cpu cores"); fallback unknown
+cores_per_socket="$(awk -F: '/^cpu cores[[:space:]]*:/ {print $2; exit}' /proc/cpuinfo | trim || true)"
+cores_per_socket="${cores_per_socket:-unknown}"
+
+# siblings per socket (x86 has "siblings") → threads per core
+siblings="$(awk -F: '/^siblings[[:space:]]*:/ {print $2; exit}' /proc/cpuinfo | trim || true)"
+if [[ -n "${cores_per_socket//[!0-9]/}" && -n "${siblings//[!0-9]/}" && "$cores_per_socket" != "0" ]]; then
+  threads_per_core="$(( siblings / cores_per_socket ))"
+else
+  threads_per_core="unknown"
+fi
+
+# architecture inference from /proc/cpuinfo only
+# heuristics:
+# - x86: look for flags " lm " (64-bit) or absence (32-bit)
+# - aarch64/arm64: ARMv8+ often shows in "model name" or "CPU architecture"
+# - armv7/armv6: "CPU architecture" field
+arch="unknown"
+flags_line="$(awk -F: '/^flags[[:space:]]*:/ {print $2; exit}' /proc/cpuinfo | tr '[:upper:]' '[:lower:]' || true)"
+if [[ -n "$flags_line" ]]; then
+  if grep -q ' lm ' <<<" $flags_line "; then arch="x86_64"; else arch="x86 (32-bit)"; fi
+else
+  arm_arch="$(awk -F: '/^CPU architecture[[:space:]]*:/ {print $2; exit}' /proc/cpuinfo | trim || true)"
+  case "${arm_arch,,}" in
+    *8*|*aarch64*) arch="aarch64";;
+    *7*) arch="armv7";;
+    *6*) arch="armv6";;
+  esac
+  if [[ "$arch" == "unknown" ]]; then
+    # fallback: try to read hints from model_name
+    case "${model_name,,}" in
+      *aarch64*|*armv8*) arch="aarch64";;
+      *armv7*)           arch="armv7";;
+      *armv6*)           arch="armv6";;
+    esac
+  fi
+fi
+
+# base/cache info (limited in /proc/cpuinfo)
+mhz="$(awk -F: '/^cpu MHz[[:space:]]*:/ {print $2; exit}' /proc/cpuinfo | trim || true)"
+cache="$(awk -F: '/^cache size[[:space:]]*:/ {print $2; exit}' /proc/cpuinfo | trim || true)"
+
+# ---------- Memory ----------
+# All sizes in /proc/meminfo are kB
+read_mem() {
+  awk -v key="$1" -F: '$1==key {gsub(/kB/,"",$2); v=$2; gsub(/^[ \t]+|[ \t]+$/,"",v); print v; exit}' /proc/meminfo
+}
+to_human() { # kB -> human-readable
+  awk -v kb="$1" 'BEGIN{
+    bytes=kb*1024;
+    split("B KB MB GB TB",u," ");
+    for(i=1;i<=5;i++){ if(bytes<1024 || i==5){ printf("%.2f %s\n", bytes, u[i]); break } bytes/=1024 }
+  }'
+}
+
+mem_total_kb="$(read_mem MemTotal)"
+mem_free_kb="$(read_mem MemFree)"
+mem_avail_kb="$(read_mem MemAvailable)"
+swap_total_kb="$(read_mem SwapTotal)"
+swap_free_kb="$(read_mem SwapFree)"
+hugepage_size_kb="$(read_mem Hugepagesize 2>/dev/null || echo "")"
+hugepages_total="$(read_mem HugePages_Total 2>/dev/null || echo "")"
+hugepages_free="$(read_mem HugePages_Free 2>/dev/null || echo "")"
+
+# ---------- Output ----------
+echo "=== CPU ==="
+kv "Vendor"            "$vendor"
+kv "Model"             "$model_name"
+kv "Architecture"      "$arch"
+kv "Logical CPUs"      "${logical_cpus}"
+kv "Sockets"           "${sockets}"
+kv "Cores/Socket"      "${cores_per_socket}"
+kv "Threads/Core"      "${threads_per_core}"
+[[ -n "$cpu_family"  ]] && kv "Family/Model/Step"  "family ${cpu_family}, model ${model_num:-?}, stepping ${stepping:-?}"
+[[ -n "$mhz"        ]] && kv "Current MHz (cpu0)"  "$mhz"
+[[ -n "$cache"      ]] && kv "L2 Cache (cpu0)"     "$cache"
+
+echo
+echo "=== Memory ==="
+kv "Mem Total"         "$(to_human "${mem_total_kb:-0}")"
+kv "Mem Free"          "$(to_human "${mem_free_kb:-0}")"
+kv "Mem Available"     "$(to_human "${mem_avail_kb:-0}")"
+kv "Swap Total"        "$(to_human "${swap_total_kb:-0}")"
+kv "Swap Free"         "$(to_human "${swap_free_kb:-0}")"
+kv "DDR Type"          "unknown (SMBIOS needed)"
+if [[ -n "$hugepage_size_kb" ]]; then
+  kv "HugePage Size"   "$(to_human "$hugepage_size_kb")"
+  kv "HugePages Total" "${hugepages_total}"
+  kv "HugePages Free"  "${hugepages_free}"
+fi
+
+# exit code
+exit 0
+```

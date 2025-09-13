@@ -7,6 +7,20 @@ summary:
 ---
 
 ```shell
+# 拉取单个 tag
+$ git fetch origin tag v0.0.0
+From git.chaowen.work:my-apps/gm_app_ui
+ ! [rejected]        v0.0.0     -> v0.0.0  (would clobber existing tag)
+
+$ git fetch origin tag v0.0.0 --force
+From git.chaowen.work:my-apps/gm_app_ui
+ t [tag update]      v0.0.0     -> v0.0.0
+
+# 拉取所有 tag
+$ git fetch origin --tags --force
+```
+
+```shell
 sudo ln -sf /path/app /usr/local/bin/app
 ```
 

@@ -1,0 +1,47 @@
+---
+title: "Ubuntu 20.04 升级 Python 到 3.9+"
+date: "2025-09-04"
+tags: ["python", "ubuntu", "deadsnakes"]
+draft: false
+summary: "在 Ubuntu 20.04 上通过 deadsnakes PPA 升级 Python 版本（3.9/3.10/3.11）的步骤。"
+---
+
+Ubuntu 20.04 Desktop 默认自带的是 **Python 3.8.10**：
+
+```bash
+python3 --version
+# 输出: Python 3.8.10
+```
+
+如果需要更高版本（如 3.9/3.10/3.11），可以通过 **deadsnakes PPA** 安装。
+
+---
+
+## 安装步骤
+
+```bash
+# 更新系统并安装必要工具
+sudo apt update
+sudo apt install -y software-properties-common
+
+# 添加 deadsnakes PPA
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt update
+
+# 安装指定 Python 版本
+sudo apt install -y python3.9 python3.9-distutils python3.9-venv
+sudo apt install -y python3.10 python3.10-distutils python3.10-venv
+sudo apt install -y python3.11 python3.11-distutils python3.11-venv
+```
+
+---
+
+## 使用方法
+
+安装完成后，使用对应命令调用不同版本的 Python：
+
+```bash
+python3.9 --version
+python3.10 --version
+python3.11 --version
+```

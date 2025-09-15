@@ -1,0 +1,116 @@
+---
+title: 'Connection refused 是什么'
+date: '2025-09-15'
+tags: ['TCP', '网络']
+draft: false
+summary: '介绍了 Connection refused、ETIMEDOUT、EHOSTUNREACH 等常见错误的来源和机制'
+---
+
+## 前置
+
+```
+客户端 (Client)                                服务端 (Server)
+    |                                                |
+    | ------------ SYN ----------------------------> |
+    |     (SYN=1, Seq=x)                             |
+    |                                                |
+    | <----------- SYN + ACK ----------------------- |
+    |     (SYN=1, ACK=1, Seq=y, Ack=x+1)             |
+    |                                                |
+    | ------------ ACK ----------------------------> |
+    |     (ACK=1, Seq=x+1, Ack=y+1)                  |
+    |                                                |
+    |          TCP 连接建立成功 (ESTABLISHED)        |
+    |                                                |
+```
+
+“Connection refused” 本质上是 TCP 协议层 的行为。
+
+TCP 在三次握手时，客户端发 SYN，
+
+如果服务端端口 没有进程在监听，服务端操作系统会立刻回一个 RST 报文。
+
+这个 RST 是 TCP 协议里的控制标志位（Flag），表示“重置连接”。
+
+所以它属于 传输层（Transport Layer, TCP）。
+
+应用程序调用 connect()，内核发 SYN
+
+对方主机回 RST 报文
+
+内核识别这是 “拒绝连接” 情况 → 向应用层返回 ECONNREFUSED (POSIX 错误码 111)
+
+应用层库再把它翻译成 "Connection refused" 这样的文本
+
+在编程接口（比如 connect() 系统调用、Java Socket、Python requests、Go net.Dial 等）里拿到的 “Connection refused”，就是 内核 TCP/IP 协议栈返回的。
+
+更具体一点：
+
+应用程序调用 connect()
+
+用户态 → 内核态系统调用
+
+内核发起 TCP 握手
+
+发送 SYN 报文
+
+如果目标端口没人监听
+
+对方内核会直接回一个 RST
+
+本机内核处理 RST
+
+立刻结束这次尝试
+
+返回 ECONNREFUSED（POSIX 错误码 111）给应用程序
+
+应用层库翻译
+
+C 里就是 Connection refused（strerror(111)）
+
+Java 抛 ConnectException: Connection refused
+
+Python 抛 ConnectionRefusedError: [Errno 111]
+
+这个错误不是应用库自己造的，而是 内核处理 TCP 报文后给的结果。
+
+编程语言/框架只是把这个 errno 包装了一下。
+
+
+## 还有其他类似错误
+
+1. ETIMEDOUT
+
+中文常见翻译：连接超时 / 操作超时
+
+产生层次：主要还是 TCP 里的超时机制触发。
+
+原因：
+
+客户端发出 SYN，但对方 一直没有回应（既没有 SYN+ACK，也没有 RST）。
+
+这通常说明：
+
+目标 IP 可达，但端口被防火墙丢弃（Silent Drop），不回包。
+
+目标主机临时不可达（例如丢包严重）。
+
+内核会多次重传 SYN，直到重试次数耗尽，最后返回 ETIMEDOUT。
+
+2. EHOSTUNREACH
+
+中文常见翻译：主机不可达
+
+产生层次：通常来自 网络层 (IP 层, ICMP 报文)。
+
+原因：
+
+路由器或本地主机收到一个 ICMP 错误消息，比如：
+
+ICMP Destination Host Unreachable
+
+ICMP Destination Network Unreachable
+
+表示网络路由上明确知道：这个目的主机/网络根本不可达。
+
+内核接收到 ICMP 报文后，立即返回 EHOSTUNREACH 给应用层。

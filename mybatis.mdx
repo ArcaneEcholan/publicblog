@@ -1,0 +1,102 @@
+---
+title: 'mybatis'
+date: '2025-09-21'
+tags: ['java']
+draft: false
+summary:
+---
+
+## BaseMapper
+
+普通 MyBatis 是怎么做的？
+
+写一个接口：
+
+```
+@Mapper
+public interface UserMapper {
+    User selectById(Long id);
+}
+```
+
+MyBatis 会在启动时解析对应的 UserMapper.xml，把 `<select id="selectById">` 里的 SQL 绑定到这个接口的方法。
+
+执行时，通过 Mapper 动态代理 (MapperProxy) 拦截方法调用，找到 MappedStatement，然后交给 Executor → JDBC 执行。
+
+核心点：必须写 XML（或者注解 @Select 等）。
+
+**plus 增强**
+
+MyBatis-Plus 的目标是 让你不用写 XML 也能执行常见的 CRUD。
+所以它提供了一个 `BaseMapper<T>` 接口，里面定义了一堆通用方法：
+```
+public interface BaseMapper<T> {
+    T selectById(Serializable id);
+    int insert(T entity);
+    int updateById(T entity);
+    int deleteById(Serializable id);
+    // ...
+}
+```
+
+你自己的 Mapper 只需要继承它：
+
+```
+@Mapper
+public interface UserMapper extends BaseMapper<User> {
+}
+```
+
+然后，你就能直接写：
+
+`userMapper.selectById(1L);`
+
+## 结论
+
+两条路：wrappers + mappers.
+
+如参绑定中的typehandler：debug路径推荐：
+simpleexecutor.doquery
+.prepareStatement
+handler.parameterize(stmt)
+MybatisParameterHandler.setParameters#typeHandler.setParameter(ps, i + 1, value, jdbcType)
+
+typeHandler 所有方法debug
+
+返回值绑定：
+DefaultResultSetHandler.getPropertyMappingValue#typeHandler.getResult(rs, column)
+
+
+**原理**: 每条mapper语句都会编程一条boundsql对象，其中记录了绑定到param或者实体字段的typehandler。setParameters 阶段会调用这些typehandler。
+
+绑定：
+
+* 实体字段： `@TableField(typeHandler = XxxTypeHandler.class)`. 这种方法只要确保用的是一个实体类，走的是insert(entity) 或者 selectbyid（entity）之类封装好的mapper方法，basemapper里面会自动解析。声明益处出出生效。
+* mapper：这种分为一下两种具体方式，需要在用到的地方都显示声明typehandler，无论是入参还是返回值。
+* mapper参数（或者返回只）：
+```
+    // 这个可以用注解的方式定义，这里不写了比较麻烦
+    <resultMap id="PatientInfoMap" type="com.example.projects__springportable.PatientInformationDto">
+        <id property="id" column="id"/>
+        <result property="name" column="name" typeHandler="com.example.projects__springportable.AesEncryptHandler"/>
+<!--        <result property="phone" column="phone" typeHandler="com.example.projects__springportable.AesEncryptHandler"/>-->
+<!--        <result property="address" column="address" typeHandler="com.example.projects__springportable.AesEncryptHandler"/>-->
+        <!-- 其他不需要加密的字段照常映射 -->
+    </resultMap>
+    @Select("SELECT * FROM patient WHERE name = #{name, typeHandler=com.example.projects__springportable.AesEncryptHandler}")
+    @ResultMap("PatientInfoMap")
+    List<PatientInformationDto> getByName(@Param("name") String name);
+```
+* mapperxml:
+```xml
+    <resultMap id="PatientInfoMap" type="com.example.projects__springportable.PatientInformationDto">
+        <id property="id" column="id"/>
+        <result property="name" column="name" typeHandler="com.example.projects__springportable.AesEncryptHandler"/>
+<!--        <result property="phone" column="phone" typeHandler="com.example.projects__springportable.AesEncryptHandler"/>-->
+<!--        <result property="address" column="address" typeHandler="com.example.projects__springportable.AesEncryptHandler"/>-->
+        <!-- 其他不需要加密的字段照常映射 -->
+    </resultMap>
+    <select id="getByName" resultMap="PatientInfoMap">
+        SELECT * FROM patient WHERE name = #{name, typeHandler=com.example.projects__springportable.AesEncryptHandler}
+    </select>
+```

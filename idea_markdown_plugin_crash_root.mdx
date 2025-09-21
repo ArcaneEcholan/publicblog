@@ -1,0 +1,29 @@
+---
+title: 'idea markdown 插件崩溃'
+date: '2025-09-21'
+tags: ['IDE']
+draft: false
+summary:
+---
+
+
+JetBrains IDE（比如 IntelliJ、PyCharm）在 Linux 系统 上启动时，会用一个内置的“小型浏览器”——叫 JCEF。
+这个 JCEF 需要用到一个文件 chrome-sandbox 来保证安全。
+
+IDE 启动时尝试使用 JCEF 的 sandbox 功能，检测到 chrome-sandbox helper 文件权限／所有者异常，就报错（如 “chrome-sandbox is owned by root and has mode error”），导致崩溃或完全启动失败。
+
+见场景：打开 markdown 预览，或者 IDE splash 屏后尝试渲染网页内容就崩, 原因是 Linux 安全机制 + 文件权限不匹配，导致 IDE 内置浏览器打不开，于是 IDE 崩溃。
+
+绕过 sandbox（更简单）：在 IDE 配置里关掉 JCEF 的 sandbox，比如加：
+
+```
+-Dide.browser.jcef.sandbox.enable=false
+```
+
+* 在界面 help->Edit Custom VM Options 里添加。
+* 或者在 ~/.config/JetBrains/IntelliJIdea2023.2/idea64.vmoptions 里添加。
+
+参考文献：
+
+* https://www.cnblogs.com/xtyuns/p/18187249
+* https://youtrack.jetbrains.com/issue/IJPL-59368/IDE-crashes-due-to-chrome-sandbox-is-owned-by-root-and-has-mode-error-when-IDE-is-launching-the-JCEF-in-a-sandbox

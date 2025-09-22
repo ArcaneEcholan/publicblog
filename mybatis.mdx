@@ -56,16 +56,27 @@ public interface UserMapper extends BaseMapper<User> {
 两条路：wrappers + mappers.
 
 如参绑定中的typehandler：debug路径推荐：
-simpleexecutor.doquery
-.prepareStatement
-handler.parameterize(stmt)
-MybatisParameterHandler.setParameters#typeHandler.setParameter(ps, i + 1, value, jdbcType)
 
-typeHandler 所有方法debug
+```
+intercept(){
 
-返回值绑定：
-DefaultResultSetHandler.getPropertyMappingValue#typeHandler.getResult(rs, column)
+    interceptor.beforequery
 
+    simpleexecutor::doquery
+
+    simpleexecutor.prepareStatement
+
+    handler.parameterize(stmt)
+
+    ##query
+
+    返回值绑定： DefaultResultSetHandler.getPropertyMappingValue#typeHandler.getResult(rs, column)
+
+
+    interceptor.afterquery
+
+}
+```
 
 **原理**: 每条mapper语句都会编程一条boundsql对象，其中记录了绑定到param或者实体字段的typehandler。setParameters 阶段会调用这些typehandler。
 
@@ -99,4 +110,99 @@ DefaultResultSetHandler.getPropertyMappingValue#typeHandler.getResult(rs, column
     <select id="getByName" resultMap="PatientInfoMap">
         SELECT * FROM patient WHERE name = #{name, typeHandler=com.example.projects__springportable.AesEncryptHandler}
     </select>
+```
+
+# boundsql
+
+### 🔹 `BoundSql` 的定义
+
+`org.apache.ibatis.mapping.BoundSql`
+里面主要有这几个关键内容：
+
+1. **sql**
+
+    * 最终要交给 JDBC 执行的 SQL 语句（包含 `?` 占位符）。
+
+    * 比如你写的：
+
+        ```xml
+        <select id="findUser" parameterType="int" resultType="User">
+          select * from user where id = #{id}
+        </select>
+        ```
+
+        * 在 `BoundSql` 里会变成：
+
+            ```sql
+            select * from user where id = ?
+            ```
+
+2. **parameterObject**
+
+    * 传入的参数对象（比如 `id=123`）。
+
+3. **parameterMappings**
+
+    * 记录了每个 `?` 对应的参数信息（名称、JDBC 类型、处理器）。
+
+    * 比如上面的 SQL 就会有一个 `ParameterMapping("id", Integer.class)`。
+
+4. **additionalParameters**
+
+    * 附加参数，比如动态 SQL（`<foreach>`、`<bind>`）产生的临时变量。
+
+
+* * *
+
+### 🔹 作用
+
+可以理解为：
+
+* **MappedStatement** → SQL 模板（带 `#{}` 占位符）。
+
+* **BoundSql** → 绑定参数之后的 SQL（带 `?` 占位符，参数映射信息都在里面）。
+
+
+所以 MyBatis 执行 SQL 的流程大概是：
+
+1. 根据 `MappedStatement` 和参数对象生成 `BoundSql`。
+
+2. `StatementHandler` 用 `BoundSql` 里的 SQL + 参数映射，设置到 `PreparedStatement`。
+
+3. JDBC 执行 SQL。
+
+
+* * *
+
+### 🔹 举个例子
+
+假设你调用：
+
+```java
+mapper.findUser(123);
+```
+
+* `MappedStatement`：
+
+    ```sql
+    select * from user where id = #{id}
+    ```
+
+* `BoundSql`：
+
+    * sql:
+
+        ```sql
+        select * from user where id = ?
+        ```
+
+    * parameterObject: `123`
+
+    * parameterMappings: `[id → Integer]`
+
+
+最终 JDBC 执行的是：
+
+```sql
+select * from user where id = 123;
 ```

@@ -1,0 +1,60 @@
+---
+title: 'idea阻塞下载源码卡住整个idea界面了'
+date: '2025-09-23'
+tags: ['IDE']
+draft: false
+summary:
+---
+
+idea阻塞下载源码卡住整个idea界面了
+
+自己去这个地址下载源码：  https://repo1.maven.org/maven2/
+
+比如这个依赖，可以 net.java.dev.jna -> net/java/dev/jna
+
+```
+<groupId>net.java.dev.jna</groupId>
+<artifactId>jna</artifactId>
+<version>4.5.2</version>
+```
+
+网页ascii:
+
+```
+net/java/dev/jna/jna/4.5.2
+../
+jna-4.5.2-javadoc.jar                             2018-07-12 18:35   4991215
+jna-4.5.2-javadoc.jar.asc                         2018-07-12 18:35       833
+jna-4.5.2-javadoc.jar.asc.md5                     2018-07-12 18:35        32
+jna-4.5.2-javadoc.jar.asc.sha1                    2018-07-12 18:35        40
+jna-4.5.2-javadoc.jar.md5                         2018-07-12 18:35        32
+jna-4.5.2-javadoc.jar.sha1                        2018-07-12 18:35        40
+jna-4.5.2-sources.jar                             2018-07-12 18:35    150593
+jna-4.5.2-sources.jar.asc                         2018-07-12 18:35       833
+jna-4.5.2-sources.jar.asc.md5                     2018-07-12 18:35        32
+jna-4.5.2-sources.jar.asc.sha1                    2018-07-12 18:35        40
+jna-4.5.2-sources.jar.md5                         2018-07-12 18:35        32
+jna-4.5.2-sources.jar.sha1                        2018-07-12 18:35        40
+jna-4.5.2.aar                                     2018-07-12 18:35    462981
+jna-4.5.2.aar.asc                                 2018-07-12 18:35       833
+jna-4.5.2.aar.asc.md5                             2018-07-12 18:35        32
+jna-4.5.2.aar.asc.sha1                            2018-07-12 18:35        40
+jna-4.5.2.aar.md5                                 2018-07-12 18:35        32
+jna-4.5.2.aar.sha1                                2018-07-12 18:35        40
+jna-4.5.2.jar                                     2018-07-12 18:35   1484022
+jna-4.5.2.jar.asc                                 2018-07-12 18:35       833
+jna-4.5.2.jar.asc.md5                             2018-07-12 18:35        32
+jna-4.5.2.jar.asc.sha1                            2018-07-12 18:35        40
+jna-4.5.2.jar.md5                                 2018-07-12 18:35        32
+jna-4.5.2.jar.sha1                                2018-07-12 18:35        40
+jna-4.5.2.pom                                     2018-07-12 18:35      1580
+jna-4.5.2.pom.asc                                 2018-07-12 18:35       833
+jna-4.5.2.pom.asc.md5                             2018-07-12 18:35        32
+jna-4.5.2.pom.asc.sha1                            2018-07-12 18:35        40
+jna-4.5.2.pom.md5                                 2018-07-12 18:35        32
+jna-4.5.2.pom.sha1                                2018-07-12 18:35        40
+```
+
+完了下载  jna-4.5.2-sources.jar  就行。
+
+下完用 idea "choose source" 直接选中就行，这样就可以不用idea阻塞下载卡住整个idea界面了。

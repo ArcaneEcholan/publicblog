@@ -1,0 +1,258 @@
+---
+title: 'jvm'
+date: '2025-09-24'
+tags: ['other']
+draft: false
+summary:
+---
+
+# jvm 本地内存只有堆吗
+
+JVM 的 本地内存 (Native Memory) 并不是 Java Heap，而是 进程在操作系统层面上申请的各种非堆空间。
+大致可以分成下面这些区块（以 HotSpot JDK8/11 为例）：
+
+```
++-----------------------------------+
+|   Java Heap (Young + Old)         |
++-----------------------------------+
+|   Metaspace (Class Metadata)      |
++-----------------------------------+
+|   Code Cache (JIT compiled code)  |
++-----------------------------------+
+|   Thread Stacks (per-thread)      |
++-----------------------------------+
+|   Direct Memory (NIO, Unsafe)     |
++-----------------------------------+
+|   GC structures / OS overhead     |
++-----------------------------------+
+```
+
+### **Java Heap (堆)**
+
+逻辑上属于 JVM 管理的对象区，但物理上也是向本地内存 mmap/malloc 出来的。
+
+```
++---------------------------------------------+
+|                 Java Heap                   |
+|                                             |
+|   +-------------------+-----------------+   |
+|   |    Young Gen      |    Old Gen      |   |
+|   |                   |                 |   |
+|   | +-----+ +-----+   |                 |   |
+|   | |Eden | |S0   |   |                 |   |
+|   | |     | |S1   |   |                 |   |
+|   | +-----+ +-----+   |                 |   |
+|   +-------------------+-----------------+   |
++---------------------------------------------+
+
+(类元数据 → Metaspace，不在 Heap 内)
+```
+
+相关 jvm 配置参数
+
+```
+* `-Xms<size>`
+    初始堆大小（默认物理内存的 1/64）
+
+* `-Xmx<size>`
+    最大堆大小（默认物理内存的 1/4）
+
+* `-Xmn<size>`
+    新生代大小（等价于 `-XX:NewSize` 和 `-XX:MaxNewSize` 一起设定）
+
+* `-XX:NewSize=<size>`
+    新生代初始大小
+
+* `-XX:MaxNewSize=<size>`
+    新生代最大大小
+
+* `-XX:SurvivorRatio=<n>`
+    Eden:Survivor 的比例，默认 8（即 Eden:Survivor = 8:1:1）
+
+* `-XX:InitialHeapSize` / `-XX:MaxHeapSize`
+    等价于 `-Xms` / `-Xmx`，只是长参数形式
+```
+
+详细分区
+
+* Young Generation (新生代)
+
+    * **Eden 区**：新对象优先分配的区域，大部分对象在这里创建。
+
+    * **Survivor 区**：S0 / S1 两个，Eden 回收后存活的对象会复制到 Survivor。
+        👉 新生代特点：频繁 Minor GC，存活率低。
+
+* Old Generation (老年代)
+
+    * 存放 **长寿命对象**（经历多次 Minor GC 仍然存活的对象，会晋升到老年代）。
+
+    * 当老年代空间不足时，可能触发 **Major GC 或 Full GC**。
+
+### Metaspace
+
+**Metaspace**（JDK8 之后取代 PermGen）是 JVM 用来存放 **类元信息 (Class Metadata)** 的本地内存区域。PermGen 在 JDK8 之后废弃 → 改为 Metaspace，占用 native memory。
+
+metaspace 里有什么: 存放类元数据（Class 定义、常量池、方法信息等）。
+
+* **类元数据 (Class Metadata)**
+
+    * 类的结构定义（类名、父类、接口）
+
+    * 方法信息（方法名、方法签名、字节码、方法属性）
+
+    * 字段信息（字段名、类型、修饰符、偏移量）
+
+    * 常量池（符号引用、字符串常量、方法句柄等）
+
+* **运行时常量池 (Runtime Constant Pool)**
+    每个类加载进来时，字节码文件的常量池会被放到 Metaspace。
+
+* **方法元信息 (Method Metadata)**
+    包括 JIT 编译需要的字节码指针、异常表、调试信息等。
+
+* **类加载器 (ClassLoader) 的元数据关联**
+    每个类元信息都挂在某个 ClassLoader 下面；只有 ClassLoader 可回收时，才可能卸载对应类。
+
+* **反射数据**
+    类通过反射 API 使用时，JVM 会生成相应的反射对象结构（Class 对象、Method 对象等），它们会关联元数据。
+
+不在 Metaspace 的东西
+
+* **对象实例**（放在 Java Heap，而不是 Metaspace）
+
+* **静态变量**（也是对象实例，存在 Heap 里，但类的定义在 Metaspace）
+
+* **JIT 编译后的机器码**（存在 **Code Cache** 区，不在 Metaspace）
+
+相关 jvm 配置参数
+
+```
+**Metaspace (类元空间，JDK8+)**
+
+* `-XX:MetaspaceSize=<size>`
+    初始大小，触发 Full GC 并尝试类卸载的阈值
+
+* `-XX:MaxMetaspaceSize=<size>`
+    最大值（默认无限制 = 取决于系统内存）
+
+* `-XX:CompressedClassSpaceSize=<size>`
+    压缩类指针空间大小（默认 ~1G）
+
+* `-XX:MaxMetaspaceExpansion`
+    一次扩展的最大步长
+
+_(JDK7 及之前是 PermGen：`-XX:PermSize`, `-XX:MaxPermSize`)_
+```
+
+### **Thread Stacks (每个线程的栈)**
+
+包括 Java 栈、C 栈（JNI/本地方法调用）、栈帧、局部变量表、操作数栈等。配置参数：`-Xss`。
+
+### 其他内存
+
+* GC 相关内存
+
+    * GC 内部数据结构（Remembered Set, Card Table, Region 信息）
+
+    * 标记位图、对象指针表等辅助区
+
+    * G1/CMS/ZGC 各自会额外维护独立的 native memory
+
+* Code Cache (代码缓存区)
+    JIT 编译后的机器码存放区，C1/C2/Profiling 编译结果都在这里。
+
+
+* JNI / Direct Memory (直接内存)
+
+    * NIO `ByteBuffer.allocateDirect()` 申请的内存
+
+    * Unsafe API 申请的 off-heap 内存
+
+    * 配置参数：`-XX:MaxDirectMemorySize`
+
+* 其他内部缓存区
+
+    * Symbol Table / String Table / Interned Strings
+
+    * ClassLoader data structures
+
+    * 线程本地缓冲 (TLAB 并不在 native memory，而在 heap；但 GC 维护的辅助结构会占 native memory)
+
+* 操作系统 / libc 层开销
+
+    * malloc/free 的元数据开销
+
+    * mmap 保留区
+
+    * 动态库加载（libjvm.so、JNI 库）
+
+* * *
+
+# 有哪些情况会gc
+
+### 主要 GC 类型
+
+* **Minor GC / Young GC**
+
+    * 只回收 **新生代 (Eden + Survivor)**
+
+    * 触发条件：**Eden** 区满了
+
+    * 停顿短，频率高
+
+
+* **Full GC**
+
+    * 回收整个堆（新生代 + 老年代）+ 尝试卸载类 (Metaspace)
+
+    * 停顿时间长，最重
+
+### 其他gc
+
+* **Major GC / Old GC**
+
+    * 只回收 **老年代**
+
+    * 在 HotSpot 里，很多情况下 Major GC = Full GC（但不一定清理 Metaspace）
+
+    * 触发条件：老年代空间不足
+
+* **Mixed GC**（G1 特有）
+
+    * 回收 **部分老年代 + 新生代**
+
+    * 比 Full GC 粒度更细
+
+* * *
+
+# jvm fullgc 是什么
+
+**JVM Full GC** = **一次完整的垃圾回收**。
+
+它和普通的 Minor GC（新生代回收）不同，会扫描并回收 **整个堆内存**，包括：
+
+* **新生代（Young Generation）**
+    Eden + Survivor 区
+
+* **老年代（Old Generation）**
+
+* **Metaspace（元空间）** 在 JDK8 以后也可能触发清理（比如卸载无引用的类元数据）
+
+### 触发条件（常见）
+
+* 老年代空间不足（对象晋升时装不下）
+
+* `System.gc()` 或 `Runtime.getRuntime().gc()` 显式调用（HotSpot 默认会触发 Full GC）
+
+* Metaspace 空间不足
+
+* CMS、G1 等收集器下的特定情况（如 GC 失败、晋升失败、混合收集触发）
+
+### 特点
+
+* 会 **Stop-The-World**，所有应用线程暂停
+
+* 扫描范围大，耗时比 Minor GC 长得多
+
+* 通常意味着内存压力比较大
+

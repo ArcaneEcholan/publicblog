@@ -60,12 +60,26 @@ dig @8.8.8.8 +stats raymond.mydarkcloud.info
 
 Extract Gz
 
+
+
 ```shell
-#  不含隐藏文件，没有首层，首层就是选定的所有文件
-tar -czvf archive.tar.gz ./*
-tar -czvf archive.tar.gz .
+# 没有首层，首层就是选定的所有文件. 压缩结果在 ./archive.tar.gz
+target=./temp
+cd ${target}
+# 不存储文件权限、时间戳等元信息，确保每次打包结果一致
+tar --sort=name --mtime='2020-01-01' --owner=0 --group=0 --numeric-owner -cf - . | gzip > archive.tar.gz
+hash=$(md5sum archive.tar.gz | awk '{print substr($1,1,8)}')
+mv archive.tar.gz ../archive-${hash}.tar.gz
+cd ..
+
+# 含首层，压缩结果在 ./archive.tar.gz
+target=temp1
+tar -czvf archive.tar.gz ./${target}
 
 # 解压到当前目录
 tar xf archive.tar.gz
+# or
 tar xf archive.tar.gz -C .
 ```
+
+tips: tar 文件头部信息：https://man.archlinux.org/man/tar.5.en

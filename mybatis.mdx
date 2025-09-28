@@ -6,7 +6,7 @@ draft: false
 summary:
 ---
 
-## BaseMapper
+## Mybatisplus 增强后的 basemapper
 
 普通 MyBatis 是怎么做的？
 
@@ -51,11 +51,55 @@ public interface UserMapper extends BaseMapper<User> {
 
 `userMapper.selectById(1L);`
 
-## 结论
+## Mybatis 核心逻辑
+
+### 流程
+
+假设是： `usermapper.querybyname(String name)` 自定义mapper方法，
+
+可以debug MybatisMapperMethod.execute(), 完了是 executeForMany，进去做两件事儿：
+* mapper方法参数转成合适的类型（比如map，mybatis往里面放点儿私活,param1,param2什么的）
+* sqlsession.selectlist 代理接下来的流程。
+
+DefaultSqlSession.selectList
+
+```
+    MappedStatement ms = configuration.getMappedStatement(statement);
+    return executor.query(ms, wrapCollection(param), RowBounds.DEFAULT, Executor.NO_RESULT_HANDLER);
+```
+
+第一件事儿就是拿到 ms（mappedstatement），这个东西是 mybatis 里对每条 sql 语句的抽象，里面有 sql id，sql文本，sql类型（select,update,insert,delete），参数类型，返回值类型，resultmap等信息。说白了就是一个 app 启动之后解析的每条 xml 语句和 mapper 注解语句生成的一个带有占位符信息的sql模板。 configuration.getMappedStatement(statement); 这个里边儿可以看到一溜这样的模板, xml, mapper接口的注解，程序启动就解析好了，执行的时候直接用，这些生成 mappedstatements 列表，
+
+executor 接管之后就是，可得参数： ms + params。
+
+ms 包含sql信息，params 是入参，最终目的是渲染sql，说白了就是创造 preparedstatement 然后把参数设置了。
+
+preparedstatement 靠 statementhandler 生成，然后 它再委托 parameterhandler 设置参数。
+
+之后就是执行了。
+
+上述过程中有很多插件点，没时间梳理。
+
+### 关注接口：
+
+https://mybatis.org/mybatis-3/configuration.html#plugins
+
+MyBatis allows you to intercept calls to at certain points within the execution of a mapped statement. By default, MyBatis allows plug-ins to intercept method calls of:
+
+* Executor  (update, query, flushStatements, commit, rollback, getTransaction, close, isClosed)
+* ParameterHandler (getParameterObject, setParameters)
+* ResultSetHandler (handleResultSets, handleOutputParameters)
+* StatementHandler (prepare, parameterize, batch, update, query)
+
+重点关注 executor 的参数。（ms + params）
+
+用拦截器去观察他们。mybatis plus 自带的的拦截器默认就会拦截他们，可以好好观察一下，什么情况，params 长啥样。对定制很有帮助。
+
+### debug
 
 两条路：wrappers + mappers.
 
-如参绑定中的typehandler：debug路径推荐：
+如参绑定中的typehandler：debug路径推荐：拦截executor api
 
 ```
 intercept(){
@@ -68,7 +112,7 @@ intercept(){
 
     handler.parameterize(stmt)
 
-    ##query
+    ##execotor.query
 
     返回值绑定： DefaultResultSetHandler.getPropertyMappingValue#typeHandler.getResult(rs, column)
 
@@ -80,7 +124,7 @@ intercept(){
 
 **原理**: 每条mapper语句都会编程一条boundsql对象，其中记录了绑定到param或者实体字段的typehandler。setParameters 阶段会调用这些typehandler。
 
-绑定：
+## typehandler 绑定：
 
 * 实体字段： `@TableField(typeHandler = XxxTypeHandler.class)`. 这种方法只要确保用的是一个实体类，走的是insert(entity) 或者 selectbyid（entity）之类封装好的mapper方法，basemapper里面会自动解析。声明益处出出生效。
 * mapper：这种分为一下两种具体方式，需要在用到的地方都显示声明typehandler，无论是入参还是返回值。

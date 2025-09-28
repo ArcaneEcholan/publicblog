@@ -1,0 +1,101 @@
+---
+title: 'rsyslog_action_queue_notice'
+date: '2025-09-28'
+tags: ['linux', 'syslog', 'rsyslog']
+draft: false
+summary:
+---
+
+# 描述
+
+$ rsyslog -v
+rsyslog 8.2112.0（2021.12 版本）
+
+今天早上发现的，上周也出现过一次，当时重启之后就好了,114上的日志没更新到syslog中缺一部分，操作日志中云平台的日志完全没有，但是基础平台还是有的
+
+
+期间总是出现这样的日志：
+
+```
+{code:java}
+Sep 26 01:52:48 mono-core-v5-0-4-0-gbdc3137bf2 rsyslogd: omhttp: checkResult error http status code: 0 reply: NULL [v8.2112.0 try https://www.rsyslog.com/e/2007 ]
+Sep 26 01:52:48 mono-core-v5-0-4-0-gbdc3137bf2 rsyslogd: action 'action-8-omhttp' suspended (module 'omhttp'), retry 0. There should be messages before this one giving the reason for suspension. [v8.2112.0 try https://www.rsyslog.com/e/2007 ]
+Sep 26 01:52:49 mono-core-v5-0-4-0-gbdc3137bf2 rsyslogd: action 'action-8-omhttp' resumed (module 'omhttp') [v8.2112.0 try https://www.rsyslog.com/e/2359 ]
+Sep 26 01:52:50 mono-core-v5-0-4-0-gbdc3137bf2 mono-smd[1754]: [ttn-admin:stdout] 20250926015250.973 ter-data-sync-1 ERROR Cluster Data Sync Thread Error: /tmp/fuse-e465c5/pki/ca.crt
+Sep 26 01:52:51 mono-core-v5-0-4-0-gbdc3137bf2 rsyslogd: omhttp: suspending ourselves due to server failure 7: Failed to connect to 172.27.192.107 port 514 after 2070 ms: No route to host [v8.2112.0 try https://www.rsyslog.com/e/2007 ]
+Sep 26 01:52:51 mono-core-v5-0-4-0-gbdc3137bf2 rsyslogd: omhttp: checkResult error http status code: 0 reply: NULL [v8.2112.0 try https://www.rsyslog.com/e/2007 ]
+Sep 26 01:52:51 mono-core-v5-0-4-0-gbdc3137bf2 rsyslogd: action 'action-8-omhttp' suspended (module 'omhttp'), retry 0. There should be messages before this one giving the reason for suspension. [v8.2112.0 try https://www.rsyslog.com/e/2007 ]
+Sep 26 01:52:52 mono-core-v5-0-4-0-gbdc3137bf2 rsyslogd: action 'action-8-omhttp' resumed (module 'omhttp') [v8.2112.0 try https://www.rsyslog.com/e/2359 ]
+Sep 26 01:52:52 mono-core-v5-0-4-0-gbdc3137bf2 mono-smd[1754]: [ttn-admin:stdout] 20250926015252.840 ync_Scheduler-1 DEBUG cmd exe output: 26 Sep 01:52:52 ntpdate[26401]: adjust time server 162.159.200.123 offset -0.003292 sec
+{code}
+```
+
+syslog接受接口已经加了日志，触发原因待复现
+
+
+问题复现，问题状况下，logger "helloworld" 后查看syslog，不打新日志。进行其他理应打rsyslog日志的系统操作也不会有新的日志。
+
+原因未知，对比其他机器，114 测试机上有以下配置：
+
+```
+{code:java}
+*.info;auth,authpriv.none  @@172.27.192.107:514
+
+action(
+type="omhttp"
+server="172.27.192.107"
+serverport="514"
+usehttps="off"
+restpath="/log"
+action.resumeRetryCount="3"
+action.resumeInterval="60"
+queue.type="linkedList"
+queue.size="10000"
+queue.dequeueBatchSize="100"
+)
+{code}
+```
+
+怀疑和这个配置有关系，这段配置删了再看一天。
+
+过了一天，当前暂未复现。
+
+加上 remote 配置和 action 之后，有过了一天半syslog 卡死复现。
+
+Sep 26 18:52:29 启动
+Sep 28 06:55:26 卡住
+
+# 解决
+
+我把这个东西调成 0(emerg)，他就不卡住了。 调成8（debug)，他立马就卡住了。
+
+https://www.rsyslog.com/doc/rainerscript/queue_parameters.html#queue-discardseverity
+
+验证的时候：
+
+```
+queue.size = 1000, 2000, 3000。1秒打100条，discardSeverity = 8(不丢弃），分别在12, 24, 35 秒 rsyslog 卡死。
+queue.size = 1000。 1秒打100条，discardSeverity = 0(丢所有级别），10 min rsyslog 没卡死。
+```
+
+说明还是他不靠谱( omhttp 模块没有正式编译进rsyslog发行版），0088需要这个，先放弃吧，也可以在java里实现，基于 omuxsock
+
+# 分析
+
+action 的队列居然会阻塞全局的 queue。
+
+在队列容量有限，并且队列里的信息无法被消费的时候，discardSeverity 如果不能即使丢弃消息，action 队列的阻塞最终会阻塞全局的 queue。
+
+# 附录：
+
+rsyslog 队列概念：https://www.rsyslog.com/doc/concepts/queues.html
+
+关于队列的更深入的比如：https://www.rsyslog.com/doc/whitepapers/queues_analogy.html
+
+# 待分析：
+
+那如果一个action(比如omuxsock）不显示配置queue选项， 它的行为和内部机制是如何的呢？
+
+https://chatgpt.com/g/g-68c6af5ed7f48191bb1446ac78cc482c-ksearch/c/68d74ba6-a82c-8329-b663-9e79cb6818cb
+
+

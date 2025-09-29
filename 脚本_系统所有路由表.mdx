@@ -1,0 +1,31 @@
+---
+title: "脚本系统所有路由表"
+date: '2025-09-29'
+tags: ['linux', 'shell']
+draft: false
+summary:
+---
+
+```sh
+#!/bin/sh
+# 根据 ip rule 自动解析所有路由表
+
+echo "=== 系统中实际存在的路由表 ==="
+tables=$(ip rule show | awk '{for(i=1;i<=NF;i++){if($i=="lookup"){print $(i+1)}}}' | sort -u)
+
+count=$(echo "$tables" | wc -l)
+echo "路由表数量: $count"
+
+echo
+for t in $tables; do
+    echo "=== 路由表: $t ==="
+    ip route show table $t || echo "（无路由）"
+    echo
+done
+```
+
+```
+chmod +x show_routes.sh
+
+./show_routes.sh
+```

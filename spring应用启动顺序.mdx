@@ -1,0 +1,306 @@
+---
+title: 'spring应用启动顺序'
+date: '2025-10-03'
+tags: ['java', 'springboot', 'tomcat']
+draft: false
+---
+
+# onrefresh
+
+我们来把 **`onRefresh()` 的来历和时机** 讲清楚：
+
+
+**`onRefresh()` 属于哪个接口/类**
+
+* `onRefresh()` **不是接口方法**，而是 `AbstractApplicationContext` 定义的一个 **protected 钩子方法**。
+
+* 它的声明：
+
+    ```java
+    protected void onRefresh() throws BeansException {
+        // For subclasses: do nothing by default.
+    }
+    ```
+
+* 默认实现是空的，**子类可以覆盖它**，在 `refresh()` 流程中添加特定逻辑。
+
+
+**web容器准备好服务发生在`onRefresh()`接口**
+
+在 Spring Boot 里：
+
+* `ServletWebServerApplicationContext` **重写了 onRefresh()**，用来启动内嵌 WebServer。
+
+启动流程（Servlet 环境，Tomcat 为例）
+
+1. **容器 refresh() 阶段**
+    Spring 在 `AbstractApplicationContext.refresh()` → `finishRefresh()` 时，会调用子类的 `onRefresh()`。
+
+    在 **`ServletWebServerApplicationContext.onRefresh()`** 里：
+
+    ```java
+    protected void onRefresh() {
+        super.onRefresh();
+        try {
+            createWebServer();
+        }
+        catch (Throwable ex) {
+            throw new ApplicationContextException("Unable to start web server", ex);
+        }
+    }
+    ```
+
+2. **创建 WebServer**
+    `createWebServer()` 调用 `ServletWebServerFactory`（比如 `TomcatServletWebServerFactory`）来构造一个 `WebServer`：
+
+    ```java
+    this.webServer = factory.getWebServer(getSelfInitializer());
+    ```
+
+    * `ServletWebServerFactory` 是 **Spring Boot 定义的接口**（抽象化不同容器：Tomcat/Jetty/Undertow）。
+
+    * `getWebServer(...)` 会返回一个 `TomcatWebServer` 实例。
+
+ Tomcat 启动与 `WebServerInitializedEvent`
+
+* 如果是 Web 应用，`ServletWebServerApplicationContext` 在 `refresh()` 的 **onRefresh()** 阶段会调用 `createWebServer()`：
+
+    * 创建并启动 Tomcat/Jetty/Undertow 实例（底层调用 `Tomcat.start()`）。
+
+    * 绑定端口 → Connector 可接受请求。
+
+    * **这之后发布 WebServerInitializedEvent**（告诉你 web server 已经 ready，可以拿到端口）。
+
+总结
+
+**`onRefresh()`（启动并运行 WebServer → Tomcat 端口开放） → `finishBeanFactoryInitialization(...)`（完成单例实例化） → `SmartInitializingSingleton.afterSingletonsInstantiated()`**
+
+最小可验证 Demo（自己跑一遍就能看到顺序）
+
+```java
+@SpringBootApplication
+public class DemoApp {
+
+  public static void main(String[] args) {
+    SpringApplication.run(DemoApp.class, args);
+  }
+
+  // 监听“WebServer 已就绪”
+  @Bean
+  ApplicationListener<org.springframework.boot.web.servlet.context.ServletWebServerInitializedEvent> webReady() {
+    return evt -> System.out.println(">>> WEB READY, port=" + evt.getWebServer().getPort());
+  }
+
+  // SmartInitializingSingleton：在“所有单例都实例化完”之后才触发
+  @Bean
+  org.springframework.beans.factory.SmartInitializingSingleton sisBean() {
+    return () -> System.out.println(">>> SIS afterSingletonsInstantiated()");
+  }
+}
+```
+
+正常情况下你会在控制台看到 **`WEB READY`** 先打印，**`SIS afterSingletonsInstantiated()`** 后打印，从而直接验证“**Tomcat ready 在前，SmartInitializingSingleton 在后**”。
+
+什么时候用哪个回调
+
+* 想在**端口已开放**后做事（例如暴露出来的依赖需要可访问）：
+    监听 **`ServletWebServerInitializedEvent`** 或用 **`ApplicationReadyEvent`**。[Home+1](https://docs.spring.io/spring-boot/3.4.0/api/java/org/springframework/boot/web/servlet/context/ServletWebServerInitializedEvent.html?utm_source=chatgpt.com)
+
+* 想在**所有单例 bean 都创建完**但**不依赖端口就绪**时做初始化：
+    用 **`SmartInitializingSingleton`**。[Home](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/beans/factory/SmartInitializingSingleton.html?utm_source=chatgpt.com)
+
+
+官方文档链接
+
+* **`AbstractApplicationContext` 时序（`onRefresh` 在“单例实例化之前”）**
+    [https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/context/support/AbstractApplicationContext.html](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/context/support/AbstractApplicationContext.html?utm_source=chatgpt.com) [Home](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/context/support/AbstractApplicationContext.html)
+
+* **`ServletWebServerApplicationContext`（创建、初始化并运行 WebServer）**
+    https://docs.spring.io/spring-boot/3.4/api/java/org/springframework/boot/web/servlet/context/ServletWebServerApplicationContext.html [Home](https://docs.spring.io/spring-boot/3.4.6/api/java/org/springframework/boot/web/servlet/context/ServletWebServerApplicationContext.html)
+
+* **`SmartInitializingSingleton` 定义**
+    [https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/beans/factory/SmartInitializingSingleton.html](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/beans/factory/SmartInitializingSingleton.html?utm_source=chatgpt.com) [Home](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/beans/factory/SmartInitializingSingleton.html?utm_source=chatgpt.com)
+
+* **`ServletWebServerInitializedEvent` 语义**
+    [https://docs.spring.io/spring-boot/3.4.0/api/java/org/springframework/boot/web/servlet/context/ServletWebServerInitializedEvent.html](https://docs.spring.io/spring-boot/3.4.0/api/java/org/springframework/boot/web/servlet/context/ServletWebServerInitializedEvent.html?utm_source=chatgpt.com) [Home](https://docs.spring.io/spring-boot/3.4.0/api/java/org/springframework/boot/web/servlet/context/ServletWebServerInitializedEvent.html?utm_source=chatgpt.com)
+
+
+**`onRefresh()` 调用时机**
+
+在 `AbstractApplicationContext.refresh()` 方法中，它被调用在 **bean 初始化完成之后**，但不是最后一步。
+
+精确顺序（简化版）：
+
+```java
+public void refresh() {
+    prepareRefresh();                 // 准备环境
+    ConfigurableListableBeanFactory bf = obtainFreshBeanFactory();
+    prepareBeanFactory(bf);
+
+    postProcessBeanFactory(bf);
+    invokeBeanFactoryPostProcessors(bf);
+    registerBeanPostProcessors(bf);
+    initMessageSource();
+    initApplicationEventMulticaster();
+
+    onRefresh();                      // <<<<<<<<<< 这里被调用
+
+    registerListeners();
+    finishBeanFactoryInitialization(bf);   // 实例化剩余的单例 bean
+    finishRefresh();                  // 发布事件，调用 Lifecycle
+}
+```
+
+**3. 时序特点**
+
+* **onRefresh 位置**：
+
+    * 在 `BeanFactoryPostProcessor`、`BeanPostProcessor` 注册完成之后
+
+    * 在所有 **单例 Bean 初始化之前**
+
+    * 在事件监听器注册之前
+
+* **Spring Boot 的用法**：
+
+    * `ServletWebServerApplicationContext.onRefresh()` 会调用 `createWebServer()`，提前启动 WebServer。
+
+    * 这样后续单例 bean（比如 DispatcherServlet、Filter）初始化时，已经有了 `ServletContext` 可以注册到 Tomcat 里。
+
+# bean 初始化发生在哪里。
+
+`refresh()` 的大流程（简化版）
+
+```text
+refresh() {
+  prepareRefresh()
+  obtainFreshBeanFactory()
+  prepareBeanFactory()
+  postProcessBeanFactory()
+  invokeBeanFactoryPostProcessors()
+  registerBeanPostProcessors()
+  initMessageSource()
+  initApplicationEventMulticaster()
+
+  onRefresh()   <-- Spring Boot WebServer 在这里启动
+
+  registerListeners()
+  finishBeanFactoryInitialization()   <-- 真正触发 Bean 实例化
+  finishRefresh()
+}
+```
+
+👉 重点：
+
+* **Bean 的实例化（包括构造、依赖注入、生命周期方法）并不是在 onRefresh() 阶段执行的**，而是在 **finishBeanFactoryInitialization()** 阶段触发的。
+
+* `onRefresh()` 是一个上下文级别的钩子点，主要让子类有机会在 **Bean 真正创建之前**做一些额外准备（WebServer 就在这一步启动）。
+
+2. Bean 的生命周期（发生在 finishBeanFactoryInitialization 阶段）
+
+当容器走到 `finishBeanFactoryInitialization(beanFactory)` 时，会逐个创建单例 bean，流程大致是：
+
+1. **实例化**
+
+    * 构造方法（Constructor 或 FactoryMethod）
+
+2. **依赖注入**
+
+    * 设置属性，自动装配
+
+3. **BeanPostProcessor — Before**
+
+    * 调用所有注册的 `BeanPostProcessor.postProcessBeforeInitialization(bean, beanName)`
+
+4. **初始化方法**
+
+    * `@PostConstruct`
+
+    * `afterPropertiesSet()` (InitializingBean 接口)
+
+    * 自定义 init-method（如果配置了）
+
+5. **BeanPostProcessor — After**
+
+    * 调用所有注册的 `BeanPostProcessor.postProcessAfterInitialization(bean, beanName)`
+
+6. **所有单例 bean 都完成后**
+
+    * 执行 `SmartInitializingSingleton.afterSingletonsInstantiated()`
+
+    * 发布 `ContextRefreshedEvent`
+
+3. 两者关系总结（onRefresh vs Bean 生命周期）
+
+* **onRefresh()**
+
+    * 发生在 **Bean 实例化之前**
+
+    * 用于子类 ApplicationContext 的扩展（Spring Boot Web 场景下启动内嵌 WebServer）。
+
+* **Bean 生命周期（构造 → 注入 → BPP.before → init → BPP.after）**
+
+    * 发生在 `finishBeanFactoryInitialization()` 阶段
+
+    * 只有到这一步，才开始逐个创建和初始化 Bean。
+
+* 顺序图大概是：
+
+
+```text
+refresh()
+  ├── ... BeanFactoryPostProcessor ...
+  ├── registerBeanPostProcessors()
+  ├── onRefresh()   <-- WebServer 在这里启动
+  ├── registerListeners()
+  ├── finishBeanFactoryInitialization()
+  │     ├── 实例化 bean (构造)
+  │     ├── 依赖注入
+  │     ├── BeanPostProcessor.before
+  │     ├── @PostConstruct / afterPropertiesSet / init-method
+  │     ├── BeanPostProcessor.after
+  │     └── ...
+  ├── finishRefresh()
+        ├── SmartInitializingSingleton.afterSingletonsInstantiated()
+        ├── 发布 ContextRefreshedEvent
+        └── ...
+```
+
+# refresh 之后
+
+**Runner & ApplicationReadyEvent** 放到前面整理的时序里：
+
+```text
+refresh()
+  ├── ... BeanFactoryPostProcessor ...
+  ├── registerBeanPostProcessors()
+  ├── onRefresh()                           <-- WebServer 创建
+  ├── registerListeners()
+  ├── finishBeanFactoryInitialization()
+  │     ├── Bean 构造 + 注入
+  │     ├── BeanPostProcessor.before
+  │     ├── @PostConstruct / afterPropertiesSet / init-method
+  │     ├── BeanPostProcessor.after
+  │     └── ...
+  ├── finishRefresh()
+  │     ├── SmartInitializingSingleton.afterSingletonsInstantiated()
+  │     ├── 发布 ContextRefreshedEvent
+  │     ├── WebServerStartStopLifecycle.start() → WebServerInitializedEvent
+  │     └── ...
+  └── refresh() 结束
+  │
+  ├── 发布 ApplicationStartedEvent
+  ├── 执行 ApplicationRunner
+  ├── 执行 CommandLineRunner
+  └── 发布 ApplicationReadyEvent
+```
+
+* * *
+
+##  总结
+
+* **CommandLineRunner / ApplicationRunner**：发生在整个 `refresh()` 完成之后，由 `SpringApplication` 调用。
+
+* **ApplicationReadyEvent**：在 Runner 执行完后发布，是“应用完全就绪”的标志。
+
+* **ApplicationStartedEvent**：在 Runner 之前，表示容器已经 refresh 完成，WebServer 也起来了。

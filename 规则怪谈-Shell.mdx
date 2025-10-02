@@ -6,7 +6,85 @@ draft: false
 summary:
 ---
 
-## 引号中不生效的通配符
+# usr_local_bin
+
+https://refspecs.linuxfoundation.org/FHS_3.0/fhs/index.html
+
+or
+
+man hier
+
+
+   /bin   This directory contains executable programs which are needed in single user mode and to bring the system up or repair it.
+
+
+   /usr/bin
+              This is the primary directory for executable programs.  Most programs executed by normal users which are not needed for booting  or  for
+              repairing the system and which are not installed locally should be placed in this directory.
+
+    /usr/sbin
+              This directory contains program binaries for system administration which are not essential for the boot process, for mounting  /usr,  or
+              for system repair.
+
+> /usr/local
+> This is where programs which are local to the site typically go.
+
+sudo rm -f /usr/local/bin/node
+sudo ln -s /home/chaowen/apps__node-v20.10.0-linux-x64/bin/node /usr/local/bin/node
+sudo rm -f /usr/local/bin/npm
+sudo ln -s /home/chaowen/apps__node-v20.10.0-linux-x64/bin/npm /usr/local/bin/npm
+sudo rm -f /usr/local/bin/npx
+sudo ln -s /home/chaowen/apps__node-v20.10.0-linux-x64/bin/npx /usr/local/bin/npx
+
+# sh 到底指的是哪个？
+
+[POSIX standard](https://pubs.opengroup.org/onlinepubs/009695399/utilities/xcu_chap02.html)
+
+stackoverflow:
+
+https://stackoverflow.com/questions/5725296/difference-between-sh-and-bash
+
+Because sh is a specification, not an implementation, /bin/sh is a symlink (or a hard link) to an actual implementation on most POSIX systems.
+
+```
+$ docker run --rm ubuntu ls -l /bin/sh
+lrwxrwxrwx 1 root root 4 Mar 31  2024 /bin/sh -> dash
+
+$ docker run --rm busybox ls -l /bin/sh
+-rwxr-xr-x  405 root     root       1029688 Sep 26  2024 /bin/sh
+
+$ docker run --rm alpine ls -l /bin/sh
+lrwxrwxrwx    1 root     root            12 Feb 13 23:04 /bin/sh -> /bin/busybox
+
+$ docker run --rm archlinux ls -l /bin/sh
+lrwxrwxrwx 1 root root 4 Mar 11 21:53 /bin/sh -> bash
+
+$ docker run --rm centos:7 ls -l /bin/sh
+lrwxrwxrwx 1 root root 4 Nov 13  2020 /bin/sh -> bash
+```
+
+??
+
+busybox 本身就是个大坑，以后再填
+
+man bash:
+
+> Bash is an sh-compatible command language interpreter that executes commands read from the standard input or from a file. Bash also incorporates useful features from the Korn and C shells (ksh and csh).
+
+man dash:
+
+> dash is the standard command interpreter for the system.  The current version of dash is in the process of being changed to conform with the POSIX 1003.2 and 1003.2a specifications for the
+shell.
+
+# linux 通配符
+
+**不会匹配目录种的隐藏文件**
+
+./a.txt ./b.txt ./.c.txt
+
+./* => ./a.txt ./b.txt ./.c.txt 不会被匹配
+
+**引号中不生效的通配符**
 
 未加引号的 * 会在执行前被 shell 展开（称为 pathname expansion 或 glob）
 

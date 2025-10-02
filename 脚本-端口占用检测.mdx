@@ -1,0 +1,52 @@
+---
+title: 脚本-端口占用检测
+date: '2025-10-02'
+tags: ['linux', 'shell']
+draft: false
+summary:
+---
+
+下面这段 Shell 脚本会将被占用的端口按区间段分组统计，结果更直观，方便管理：
+
+```bash
+#!/usr/bin/env bash
+
+echo "当前系统已被监听的端口，按区间段分布情况如下："
+
+# 获取被监听端口并排序去重
+ports=$(ss -tunlp | awk 'NR>1 {split($5, a, ":"); port=a[length(a)]; if(port ~ /^[0-9]+$/) print port}' | sort -n | uniq)
+
+# 定义分段
+ranges=("0-1023" "1024-49151" "49152-65535")
+
+# 按段统计
+for range in "${ranges[@]}"; do
+  start=${range%-*}
+  end=${range#*-}
+  echo -e "\n端口区间 [$range]："
+  echo "$ports" | awk -v s="$start" -v e="$end" '$1>=s && $1<=e'
+done
+```
+
+示例输出：
+
+```
+当前系统已被监听的端口，按区间段分布情况如下：
+
+端口区间 [0-1023]：
+22
+80
+443
+
+端口区间 [1024-49151]：
+3306
+8080
+
+端口区间 [49152-65535]：
+```
+
+### 官方文档
+
+-   `ss` 命令: man7.org/linux/man-pages/man8/ss.8.html
+
+-   `awk` 命令: man7.org/linux/man-pages/man1/awk.1p.html

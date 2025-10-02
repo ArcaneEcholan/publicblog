@@ -1,0 +1,63 @@
+---
+title: mysql 存文件？
+date: '2025-04-24'
+tags: ['MySQL']
+draft: false
+summary:
+---
+
+```
++----------------+--------------+------+-----+---------+-------+
+| Field          | Type         | Null | Key | Default | Extra |
++----------------+--------------+------+-----+---------+-------+
+| id             | varchar(255) | NO   | PRI | NULL    |       |
+| object_key     | varchar(255) | NO   |     | NULL    |       |
+| content_type   | varchar(255) | YES  |     | NULL    |       |
+| object_content | longblob     | YES  |     | NULL    |       |
+| ctime          | bigint(11)   | YES  |     | NULL    |       |
+| file_size      | bigint(11)   | YES  |     | NULL    |       |
+| type           | varchar(255) | YES  |     | NULL    |       |
++----------------+--------------+------+-----+---------+-------+
+```
+
+如果有两三行数据，这些行中有大文件，那么
+
+update object set content_type="xxx";
+
+会特别慢吗？还是像只更新普通字段（非blob）一样的速度？
+
+答案是特别慢。
+
+因为 UPDATE 虽然只改了 content_type 字段，但仍然会触发整行的写入，包括 longblob 字段的数据复制，哪怕你没有修改它。
+
+InnoDB 行是按整行复制的，即使你只更新某个字段，也需要读整行、修改字段、写整行。对于 longblob 这类大字段来说：
+
+如果没有设置为 ROW_FORMAT=DYNAMIC 或 COMPRESSED，InnoDB 默认会将整个 blob 内容内联到行中。
+
+更新其他字段时，也要把这部分 blob 重新写一遍。
+
+更改 ROW_FORMAT 的方式比较冒险，最后采取垂直分表的方法。
+
+这是分表之后的结构
+
+```
+-- 主表（轻量字段）
+CREATE TABLE object_meta (
+  id           VARCHAR(255) PRIMARY KEY,
+  object_key   VARCHAR(255) NOT NULL,
+  content_type VARCHAR(255),
+  ctime        BIGINT(11),
+  file_size    BIGINT(11),
+  type         VARCHAR(255)
+);
+
+-- 大字段表
+CREATE TABLE object_blob (
+  id             VARCHAR(255) PRIMARY KEY,
+  object_content LONGBLOB
+);
+```
+
+更新元数据不会触碰 object_content
+
+更适合缓存、索引、压缩优化

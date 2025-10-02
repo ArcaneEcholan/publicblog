@@ -1,0 +1,86 @@
+---
+title: ash 对 JVM 进行线上耗时跟踪
+date: '2025-04-24'
+tags: ['java']
+draft: false
+summary:
+---
+
+```shell
+wget https://arthas.aliyun.com/arthas-boot.jar
+# 如果没有 wget 就用 curl
+# curl -O https://arthas.aliyun.com/arthas-boot.jar
+
+# 拿到待追踪的 jvm 的 pid
+ps -ef | grep java
+
+# 把 pid 作为参数传递即可
+java -jar arthas-boot.jar ${pid}
+```
+
+示例：
+
+```
+$ java -jar arthas-boot.jar 10080
+[INFO] JAVA_HOME: /home/admin/java-8-openjdk-amd64/jre
+[INFO] arthas-boot version: 4.0.5
+[ERROR] Can not read arthas version from: https://arthas.aliyun.com/api/latest_version
+[INFO] arthas home: /root/.arthas/lib/4.0.5/arthas
+[INFO] Try to attach process 10080
+Picked up JAVA_TOOL_OPTIONS:
+[INFO] Attach process 10080 success.
+[INFO] arthas-client connect 127.0.0.1 3658
+  ,---.  ,------. ,--------.,--.  ,--.  ,---.   ,---.
+ /  O  \ |  .--. ''--.  .--'|  '--'  | /  O  \ '   .-'
+|  .-.  ||  '--'.'   |  |   |  .--.  ||  .-.  |`.  `-.
+|  | |  ||  |\  \    |  |   |  |  |  ||  | |  |.-'    |
+`--' `--'`--' '--'   `--'   `--'  `--'`--' `--'`-----'
+
+wiki        https://arthas.aliyun.com/doc
+tutorials   https://arthas.aliyun.com/doc/arthas-tutorials.html
+version     4.0.5
+main_class  /etc/smd/files/bin/ttn-admin/basic-platform-main.jar --spring.profi
+            les.active=prod --db.host=127.0.0.1 --db.port=33081 --db.user=root
+            --db.password=root --db.name=totp-admin --APP_ROOT_DIR=/etc/smd/fil
+            es
+pid         10080
+start_time  2025-04-24 17:34:17.329
+currnt_time 2025-04-24 17:38:56.484
+
+[arthas@10080]$
+```
+
+在 arthas 命令行中以 trace ClassFullName Method 的方式追踪目标方法：trace com.example.ExampleService updateObj
+
+```
+[arthas@10080]$ trace com.example.filemanage.ObjectServiceLayer$ObjServiceImpl updateObj
+Press Q or Ctrl+C to abort.
+Affect(class count: 2 , method count: 2) cost in 1017 ms, listenerId: 1
+`---ts=2025-04-24 17:39:14.097;thread_name=https-jsse-nio-8088-exec-2;id=274;is_daemon=true;priority=5;TCCL=org.springframework.boot.web.embedded.tomcat.TomcatEmbeddedWebappClassLoader@13cc0b90
+    `---[11665.121307ms] com.example.filemanage.ObjectServiceLayer$ObjServiceImpl$$EnhancerBySpringCGLIB$$eada30ba:updateObj()
+        `---[99.98% 11663.270155ms ] org.springframework.cglib.proxy.MethodInterceptor:intercept()
+            `---[99.92% 11653.636356ms ] com.example.filemanage.ObjectServiceLayer$ObjServiceImpl:updateObj()
+                +---[0.00% 0.2317ms ] com.example.ObjectController$ObjUpdate:getCustom() #201
+                +---[0.00% 0.065557ms ] com.example.ObjectController$ObjUpdate:getObjectKey() #203
+                +---[0.13% 15.361313ms ] com.example.filemanage.ObjectDataAccessLayer$ObjDataDao:getObjByKey() #203
+                `---[98.24% 11448.835245ms ] com.example.filemanage.ObjectDataAccessLayer$ObjDataDao:updateObjContentType() #208
+```
+
+注意，追踪方法不会递归到方法中，需要自己手动递归追踪，例如，还要追踪 ObjDataDao:updateObjContentType() 方法的话，
+
+```
+[arthas@10080]$ trace com.example.filemanage.ObjectDataAccessLayer$ObjDataDao updateObjContentType
+Press Q or Ctrl+C to abort.
+Affect(class count: 3 , method count: 2) cost in 560 ms, listenerId: 4
+`---ts=2025-04-24 17:41:30.865;thread_name=https-jsse-nio-8088-exec-7;id=279;is_daemon=true;priority=5;TCCL=org.springframework.boot.web.embedded.tomcat.TomcatEmbeddedWebappClassLoader@13cc0b90
+    `---[7312.095922ms] com.example.filemanage.ObjectDataAccessLayer$ObjDataDaoImpl$$EnhancerBySpringCGLIB$$70ee0952:updateObjContentType()
+        `---[100.00% 7311.843002ms ] org.springframework.cglib.proxy.MethodInterceptor:intercept()
+            `---[100.00% 7311.542397ms ] com.example.filemanage.ObjectDataAccessLayer$ObjDataDaoImpl:updateObjContentType()
+                +---[0.00% 0.100231ms ] com.baomidou.mybatisplus.core.toolkit.Wrappers:lambdaUpdate() #201
+                +---[0.01% 0.510414ms ] com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper:set() #201
+                +---[0.00% 0.094436ms ] com.example.filemanage.ObjectDataAccessLayer$ObjPo:getId() #202
+                +---[0.00% 0.20163ms ] com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper:eq() #202
+                `---[99.94% 7306.798624ms ] com.example.filemanage.ObjectDataAccessLayer$ObjDataMapper:update() #200
+```
+
+arthas-boot.jar 必须依赖 jdk/lib/tools.jar 才可执行，所以要确保有完整的jdk安装（只有jre不行，tools.jar是jre的一部分）

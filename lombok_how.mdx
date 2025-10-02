@@ -1,0 +1,254 @@
+---
+title: 'lombok_how'
+date: '2025-10-02'
+tags: ['javac', 'java', 'lombok']
+draft: false
+summary:
+---
+
+# 为什么 lombok 总是 provided 的。
+
+```
+<dependency>
+  <groupId>org.projectlombok</groupId>
+  <artifactId>lombok</artifactId>
+  <version>xxx</version>
+  <scope>provided</scope>
+  <optional>true</optional>
+</dependency>
+```
+
+lombok 总是不会被需要：
+
+* optional=true：这个依赖不会被传递到下游项目。 即，如果你的项目 A 依赖了 lombok（且标记为 optional），那么依赖 A 的项目 B 不会自动继承 lombok。
+* provided：编译、测试的时候才会引入依赖，打包的时候不会。 影响自己项目的打包结果, 控制 编译/运行/打包阶段 是否使用
+
+这是因为 lombok 只在编译时生效，编译完成后，其中的类就每啥用了。其中的类是用来辅助 javac 编译的。
+
+# lombok 生效的理论基础：
+
+```
+flowchart TD
+
+    A[源代码 .java] --> B[javac 编译器]
+    B --> C[解析语法树 AST]
+    C --> D[调用注解处理器 (Annotation Processor)]
+    D -->|可能生成新源码/资源| A
+    D --> E[修改/增强 AST]
+    E --> F[字节码生成 .class]
+```
+
+解释各步骤
+
+1. **源代码**：你写的 `.java` 文件。
+
+2. **javac 编译器**：启动编译流程。
+
+3. **解析 AST**：编译器把源码解析成抽象语法树（Abstract Syntax Tree）。
+
+4. **调用注解处理器**：
+
+    * 找到所有实现了 `javax.annotation.processing.Processor` 的处理器（比如 Lombok、MapStruct、Dagger）。
+
+    * 把 AST 和注解信息交给它们处理。
+
+    * 注解处理器可以：
+
+        * 校验注解使用是否合法
+
+        * 生成新的源代码/配置文件
+
+        * （Lombok 这种 hack 还能修改 AST）
+
+5. **生成/修改源码**：如果处理器生成了新源码，编译器会再次进入编译循环（Round Processing）。
+
+6. **字节码生成**：所有源码（包括生成的）都被编译成 `.class` 文件，交给 JVM 使用。
+
+* * *
+
+#  Lombok 常用注解对照表
+
+## 1. Getter / Setter
+
+```java
+    @Getter @Setter
+    private String name;
+```
+
+编译后：
+
+```java
+    private String name;
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+```
+
+* * *
+
+## 2. ToString
+
+```java
+@ToString
+public class User {
+    private String name;
+    private int age;
+}
+```
+
+编译后：
+
+```java
+public class User {
+    private String name;
+    private int age;
+
+    public String toString() {
+        return "User(name=" + this.name + ", age=" + this.age + ")";
+    }
+}
+```
+
+* * *
+
+## 3. EqualsAndHashCode
+
+```java
+@EqualsAndHashCode
+public class User {
+    private String name;
+    private int age;
+}
+```
+
+编译后：
+
+```java
+public class User {
+    private String name;
+    private int age;
+
+    public boolean equals(Object o) { ... }   // 基于字段比较
+    public int hashCode() { ... }             // 基于字段生成 hash
+}
+```
+
+* * *
+
+## 4. NoArgsConstructor / AllArgsConstructor / RequiredArgsConstructor
+
+```java
+@NoArgsConstructor
+@AllArgsConstructor
+@RequiredArgsConstructor
+public class User {
+    private String name;
+    private final int age;
+}
+```
+
+编译后：
+
+```java
+public class User {
+    private String name;
+    private final int age;
+
+    public User() {}                            // NoArgsConstructor
+    public User(String name, int age) { ... }   // AllArgsConstructor
+    public User(int age) { ... }                // RequiredArgsConstructor
+}
+```
+
+* * *
+
+## 5. Data
+
+相当于：
+
+* `@Getter` + `@Setter`
+
+* `@ToString`
+
+* `@EqualsAndHashCode`
+
+* `@RequiredArgsConstructor`
+
+* * *
+
+## 6. Builder
+
+```java
+@Builder
+public class User {
+    private String name;
+    private int age;
+}
+```
+
+编译后：
+
+```java
+public class User {
+    private String name;
+    private int age;
+
+    User(String name, int age) { ... }
+
+    public static User.UserBuilder builder() { return new User.UserBuilder(); }
+
+    public static class UserBuilder {
+        private String name;
+        private int age;
+
+        public UserBuilder name(String name) { this.name = name; return this; }
+        public UserBuilder age(int age) { this.age = age; return this; }
+        public User build() { return new User(name, age); }
+    }
+}
+```
+
+* * *
+
+## 7. Slf4j
+
+```java
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+public class User {
+}
+```
+
+编译后：
+
+```java
+public class User {
+    private static final Logger log = LoggerFactory.getLogger(User.class);
+}
+```
+
+# 自我实践
+
+github 实验性质项目：
+
+https://github.com/ArcaneEcholan/anno-compile-process
+
+核心 BanAllArgsConstructorProcessor 类用来在编译的时候检查源代码注解：
+
+https://github.com/ArcaneEcholan/anno-compile-process/blob/bf4327bb5920bd676d14dc819341385efcc8bf56/anno/src/main/java/com/example/app/BanAllArgsConstructorProcessor.java
+
+编译的时候把它所在的模块引入依赖即可。
+
+其他不多说，注意以下细节即可：
+
+* com.google.auto.service 依赖自动帮你生成上面那个 META-INF/services/javax.annotation.processing.Processor 文件。这样你的处理器就能被 javac 发现和执行了
+
+```
+    <dependency>
+        <groupId>com.google.auto.service</groupId>
+        <artifactId>auto-service</artifactId>
+        <scope>provided</scope>
+        <version>1.1.1</version>
+    </dependency>
+```

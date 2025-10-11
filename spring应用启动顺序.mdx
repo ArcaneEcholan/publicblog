@@ -254,9 +254,8 @@ refresh()
   ├── onRefresh()   <-- WebServer 在这里启动
   ├── registerListeners()
   ├── finishBeanFactoryInitialization()
-  │     ├── 实例化 bean (构造)
-  │     ├── 依赖注入
-  │     ├── BeanPostProcessor.before
+  │     ├── 实例化 bean (构造), 此时执行 ConfigurationPropertiesBindingPostProcessor，绑定 @ConfigurationProperties
+  │     ├── BeanPostProcessor.before 此时会执行 AutowiredAnnotationBeanPostProcessor, 注入 @Value / @Autowired
   │     ├── @PostConstruct / afterPropertiesSet / init-method
   │     ├── BeanPostProcessor.after
   │     └── ...
@@ -271,28 +270,29 @@ refresh()
 **Runner & ApplicationReadyEvent** 放到前面整理的时序里：
 
 ```text
-refresh()
-  ├── ... BeanFactoryPostProcessor ...
-  ├── registerBeanPostProcessors()
-  ├── onRefresh()                           <-- WebServer 创建
-  ├── registerListeners()
-  ├── finishBeanFactoryInitialization()
-  │     ├── Bean 构造 + 注入
-  │     ├── BeanPostProcessor.before
-  │     ├── @PostConstruct / afterPropertiesSet / init-method
-  │     ├── BeanPostProcessor.after
-  │     └── ...
-  ├── finishRefresh()
-  │     ├── SmartInitializingSingleton.afterSingletonsInstantiated()
-  │     ├── 发布 ContextRefreshedEvent
-  │     ├── WebServerStartStopLifecycle.start() → WebServerInitializedEvent
-  │     └── ...
-  └── refresh() 结束
-  │
-  ├── 发布 ApplicationStartedEvent
-  ├── 执行 ApplicationRunner
-  ├── 执行 CommandLineRunner
-  └── 发布 ApplicationReadyEvent
+├── 创建 Environment 发布 ApplicationEnvironmentPreparedEvent, 在这里监听 Environment，可修改 PropertySource
+├── refresh()
+      ├── ... BeanFactoryPostProcessor ...
+      ├── registerBeanPostProcessors()
+      ├── onRefresh()                           <-- WebServer 创建
+      ├── registerListeners()
+      ├── finishBeanFactoryInitialization()
+      │     ├── Bean 构造 + 注入 + 此时执行 ConfigurationPropertiesBindingPostProcessor，绑定 @ConfigurationProperties
+      │     ├── BeanPostProcessor.before 此时会执行 AutowiredAnnotationBeanPostProcessor, 注入 @Value / @Autowired
+      │     ├── @PostConstruct / afterPropertiesSet / init-method
+      │     ├── BeanPostProcessor.after
+      │     └── ...
+      ├── finishRefresh()
+      │     ├── SmartInitializingSingleton.afterSingletonsInstantiated()
+      │     ├── 发布 ContextRefreshedEvent
+      │     ├── WebServerStartStopLifecycle.start() → WebServerInitializedEvent
+      │     └── ...
+      └── refresh() 结束
+      │
+      ├── 发布 ApplicationStartedEvent
+      ├── 执行 ApplicationRunner
+      ├── 执行 CommandLineRunner
+      └── 发布 ApplicationReadyEvent
 ```
 
 * * *

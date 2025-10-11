@@ -1,0 +1,24 @@
+---
+title: git_lfs_migrate
+date: '2025-10-11'
+tags: ['git']
+draft: false
+summary:
+---
+
+问题：将原本不是lfs的文件迁移到lfs
+
+修改 .gitattributes，追加要执行的文件相对路径。
+
+```sh
+
+# 重新添加该文件（迁移的关键是重新add同一个文件)
+git rm --cache 该文件路径
+
+#or
+
+# 重新整个仓库
+git rm --cache . -r
+```
+
+然后重新 add 即可。

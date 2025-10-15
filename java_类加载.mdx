@@ -200,7 +200,7 @@ https://github.com/spring-projects/spring-boot/tree/v2.7.0
 源码下下来放到idea里面（支持跳转）观察 spring-boot-project/spring-boot-tools/spring-boot-loader ，这就是 springboot loader 的源码。
 
 Launcher#launch(String[] args)，看这个方法就行，能看到springboot完整做的事情，这里总结一下：
-* 创建LaunchedURLClassLoader
+* 创建LaunchedURLClassLoader(这个类加载器重写了上述 findclass -> defineclass -> resolveclass 这几个方法，是自定义类加载的实践典范，可以参考。)
   * cp 查找目录是：BOOT-INF/lib/*.jar 和 BOOT-INF/classes
   * 双亲是Launcher的类加载器（通常是AppClassLoader）
 * 设置 tccl 为上面创建的 LaunchedURLClassLoader: `Thread.currentThread().setContextClassLoader(classLoader);`

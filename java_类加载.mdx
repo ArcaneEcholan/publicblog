@@ -1,0 +1,208 @@
+---
+title: 'java 类加载'
+date: '2025-10-15'
+tags: ['java']
+draft: false
+summary:
+---
+
+## loadClass
+
+ClassLoader.loadClass(): findClass → defineClass → resolveClass，实现了双亲委派模型
+
+把类的字节码找到，加载进来，变成 `Class` 对象缓存起来。不会初始化类（不会执行静态块）
+
+## forName
+
+Class.forName: 获取并初始化一个类 Java 调用 native 实现（JVM 层）
+
+`Class.forName()` 是一个“直接让 JVM 帮我搞定一切”的捷径
+
+它不是给你扩展加载逻辑用的，而是：
+
+> “我要用某个类，你 JVM 自己去找、加载、初始化。”
+
+它调用 native 的 `forName0`，这个方法直接进入 JVM C++ 层，比如在 HotSpot 里是：
+
+```cpp
+JVM_FindClassFromCaller(env, name, initialize, loader, caller);
+```
+
+这个 native 方法会：
+
+1. 先去 JVM 内部检查这个类是否已加载；
+
+2. 如果没有，就调用类加载器（`ClassLoader.loadClass()`）；
+
+3. 如果 `initialize=true`，就调用类初始化逻辑（执行 `<clinit>` 静态块）。
+
+## JVM 规定：在使用一个类之前，必须先初始化它
+
+这很好理解，例如引用一个类的静态变量或者方法时，前提一定是类自身相关的一切东西（类的字节码，类的静态变量（同时就包含了静态代码块））都应该已经准备好了或者执行了。
+
+再例如在执行到 new 实例的时候，实例都要初始化了，上述类相关的过程也都应该已经完成了。
+
+JVM 对类的“使用”有一个非常明确的定义（出自《Java 虚拟机规范》第 5 章）： 第一次主动使用一个类时，JVM 必须先执行它的 **初始化（initialization）**。
+
+“主动使用”包括以下几种情况：
+
+| 行为 | 是否会触发类初始化（执行 `static {}`） |
+| --- | --- |
+|  new 一个对象 | ✅ 会 |
+|  调用类的静态方法 | ✅ 会 |
+|  访问类的静态变量（非 final 常量） | ✅ 会 |
+|  通过反射调用类 | ✅ 会 |
+|  初始化子类时，其父类会先初始化 | ✅ 会 |
+|  调用 `Class.forName()` | ✅ 会 |
+|  调用 `ClassLoader.loadClass()` | ❌ 不会 |
+
+当你 `new SvsApi()` 的时候：
+
+```java
+SvsApi api = new SvsApi();
+```
+
+JVM 会按这个顺序执行：
+
+1.  检查 `SvsApi` 这个类是否已经加载并初始化。
+
+    * 如果没加载：ClassLoader 去加载 `.class` 文件。
+
+    * 如果没初始化：进入“初始化阶段”。
+
+2.  初始化阶段做什么？
+
+    * 执行类中的所有 `static` 变量赋值。
+
+    * 执行 `static {}` 块。
+
+3.  初始化完成后，才开始执行构造方法 `new SvsApi()`（实例化对象）。
+
+## 例外
+
+```java
+public class A {
+    static final int X = 10; // 编译期常量
+}
+
+
+public class A {
+    static final int X = new Random().nextInt(100); // 虽然是常量，由于需要运行函数，所以运行期才能确定
+}
+
+
+public class A {
+    static int X = new Random().nextInt(100); // 普通的类变量，运行期才能确定
+}
+```
+
+总结区别
+
+| 变量类型 | 值何时确定 | 访问时会不会触发类初始化 |
+| --- | --- | --- |
+| `static final int X = 10;` | 编译期 | ❌ 不会 |
+| `static final int X = getValue();` | 运行期 | ✅ 会 |
+| `static int X = 10;` | 运行期 | ✅ 会 |
+
+## 实用
+
+类加载特性：
+* 可以控制什么时候加载
+* 加载的时候可以执行代码块儿。
+
+一次初始化：
+* 整个程序运行过程中只执行一次
+* 多线程没有竞争问题
+
+利用类的初始化只会有一次，而且一定是在类被用到的时候才会执行的原理，完成某些特殊资源的初始化。
+```java
+
+    /**
+     * 该方法是幂等的，多次调用只会在第一次调用时生效。
+     */
+    public static void lazyLoad() {
+        Holder.get();
+    }
+
+    /**
+     * Holder 类负责线程安全地调用 init0() 方法。
+     */
+    private static class Holder {
+        static final Holder INSTANCE = create(); // 借助类加载机制保证线程安全的懒加载
+
+        static Holder create() {
+            init0();
+            // 扩展点
+            return new Holder();
+        }
+
+        /**
+         * 访问 get() 才触发 Holder 的 <clinit>，JVM 保证一次且安全发布
+         */
+        static Holder get() {
+            return Holder.INSTANCE;
+        }
+    }
+```
+
+**对比** compare and set
+
+```java
+  private static final AtomicBoolean loaded = new AtomicBoolean(false);
+
+  public void lazyLoad() {
+    if (!loaded.compareAndSet(false, true)) return; // 已经加载过，直接返回
+    try {
+      // 真正的一次性初始化逻辑
+      initResources();
+    } catch (Throwable t) {
+      // 失败回滚，允许重试
+      loaded.set(false);
+      throw t;
+    }
+  }
+```
+
+这种方案和上面还不一样，虽然都是加载一次，但是这种加载如果多线程的话，确实只有一个线程能加载，但是可能这个线程还没加载完，其他线程就执行后面的逻辑了，这样就会导致其他线程使用到不完整的资源。
+
+**对比** 双检
+
+和双检目的一致，但是双检更麻烦:
+
+```java
+    private static volatile boolean loaded = false;
+
+    public void lazyLoad() {
+        if (loaded) return; // 已经加载过，直接返回
+        synchronized (this) { // 双检这个地方会卡住，其他等待的线程不会立马执行后面的资源使用逻辑。
+            if (loaded) return; // 已经加载过，直接返回
+            // 真正的一次性初始化逻辑
+            initResources();
+            loaded = true; // 标记为已加载
+        }
+    }
+```
+
+## 问题
+
+static {} 块儿中初始化不好使，因为难以发现原因，static {} 抛出的异常都是 ExceptionInInitializerError，而且这个异常会被类加载器捕获，导致类加载失败，后续再用这个类就会报 NoClassDefFoundError。
+
+亲历一个项目在 static {} 块儿中初始化 DB 连接池，用这个类就会报 NoClassDefFoundError，搞了半天才发现是 static {} 块儿中初始化 DB 连接池失败了。
+
+## springboot loader
+
+springboot 配置 mvn 实现了 fatjar 类加载，这归功于 tccl(thread context class loader) 。
+
+首先 mvn plugin 会在fatjar里放 springframework boot loader 的 源码，并将其设置为jar运行主入口，jar 运行的时候，自己写的 main 方法会被 springboot loader 调用，这之前会设置 tccl 为 springboot loader 的类加载器。
+
+https://github.com/spring-projects/spring-boot/tree/v2.7.0
+
+源码下下来放到idea里面（支持跳转）观察 spring-boot-project/spring-boot-tools/spring-boot-loader ，这就是 springboot loader 的源码。
+
+Launcher#launch(String[] args)，看这个方法就行，能看到springboot完整做的事情，这里总结一下：
+* 创建LaunchedURLClassLoader
+  * cp 查找目录是：BOOT-INF/lib/*.jar 和 BOOT-INF/classes
+  * 双亲是Launcher的类加载器（通常是AppClassLoader）
+* 设置 tccl 为上面创建的 LaunchedURLClassLoader: `Thread.currentThread().setContextClassLoader(classLoader);`
+* 调用 pom.xml 中指定的 main 方法: build>plugins>plugin>configuration>mainClass
+

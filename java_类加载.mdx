@@ -1,5 +1,5 @@
 ---
-title: 'java 类加载'
+title: 'java 类加载与初始化'
 date: '2025-10-15'
 tags: ['java']
 draft: false
@@ -188,6 +188,70 @@ public class A {
 static {} 块儿中初始化不好使，因为难以发现原因，static {} 抛出的异常都是 ExceptionInInitializerError，而且这个异常会被类加载器捕获，导致类加载失败，后续再用这个类就会报 NoClassDefFoundError。
 
 亲历一个项目在 static {} 块儿中初始化 DB 连接池，用这个类就会报 NoClassDefFoundError，搞了半天才发现是 static {} 块儿中初始化 DB 连接池失败了。
+
+而且一旦 static {} 块儿中初始化失败，这个类就废了，后续再用这个类就会报 NoClassDefFoundError。
+
+```java
+class Test {
+    public static void main(String[] args) {
+        try {
+            System.out.println(1);
+            System.out.println(Test1.i); // 这里报错 ExceptionInInitializerError
+        } catch (Throwable e) {
+            Throwable root = Utils.getRootCause(e);
+            System.out.println(root.getClass().getName() + ": " + root.getMessage());
+        }
+
+        try {
+            System.out.println(2);
+            System.out.println(Test1.i); // 这里直接报错 NoClassDefFoundError，说明 static {} 报错直接导致类加载失败。
+        } catch (Throwable e) {
+            Throwable root = Utils.getRootCause(e);
+            System.out.println(root.getClass().getName() + ": " + root.getMessage());
+        }
+    }
+}
+
+class Test1 {
+
+    public static void ex() {
+        throw new RuntimeException("异常");
+    }
+
+    static {
+        ex();
+        System.out.println("hello");
+    }
+
+    static int i = 1;
+}
+
+class Utils {
+
+    /**
+     * 获取异常的最根本原因（root cause）。
+     *
+     * @param throwable 要分析的异常
+     */
+    public static Throwable getRootCause(Throwable throwable) {
+        Throwable cause = throwable;
+        while (cause.getCause() != null && cause.getCause() != cause) {
+            cause = cause.getCause();
+        }
+        return cause;
+    }
+}
+
+```
+
+结果：
+
+```
+1
+java.lang.RuntimeException: 异常
+2
+java.lang.NoClassDefFoundError: Could not initialize class Test1
+```
 
 ## springboot loader
 

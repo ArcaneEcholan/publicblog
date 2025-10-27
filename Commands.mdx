@@ -6,6 +6,13 @@ draft: false
 summary:
 ---
 
+手动设置系统时间
+
+```shell
+date -s "2025-10-25 15:47:00"
+hwclock -u -w
+```
+
 ```shell
 # 拉取单个 tag
 $ git fetch origin tag v0.0.0

@@ -168,3 +168,123 @@ write(fd2, "AAA", 3);  // 仍然追加到文件末尾
 | 文件名层 | dirent（目录项） | 每目录存在 | 名称 → inode 映射关系，受 `link`/`unlink` 操作影响 |
 
 ---
+
+# lsof deleted 标识
+
+man lsof
+
+```
+lsof - list open files
+```
+
+##  一、Linux 文件系统三层概念
+
+在内核视角，一个“文件”其实包含三个层次：
+
+| 层 | 名称 | 说明 |
+| --- | --- | --- |
+| 1️⃣ | **fd（File Descriptor）** | 进程打开文件后获得的“句柄编号”，在 `/proc/<pid>/fd/` 下能看到 |
+| 2️⃣ | **inode（索引节点）** | 存储文件的实际数据块和元信息（权限、大小、时间等） |
+| 3️⃣ | **dirent（directory entry）** | 目录项：文件名到 inode 的映射（名字→内容） |
+
+可以理解为：
+
+```
+文件名（dirent） --> inode（文件内容） <-- fd（进程打开的引用）
+```
+
+* * *
+
+##  二、几个关键操作的区别
+
+| 操作 | 影响 fd | 影响 dirent | 说明 |
+| --- | --- | --- | --- |
+| `rm file` | ❌ 不影响现有 fd | ✅ 删除目录项（dirent） | 文件“名字”被移除；若仍有进程打开（持有 fd），inode 仍存在；此时会显示 `(deleted)` |
+| `File.delete()`（Java） | ❌ 不影响 fd（除非程序关闭） | ✅ 删除 dirent | 其实和 `rm` 一样，本质是调用 `unlink()` 系统调用 |
+| `fileinputstream.close()`（Java） | ✅ 关闭 fd | ❌ 不动 dirent | 只是告诉内核“我不再使用这个文件”；如果文件名还在，就仍存在于目录中 |
+| `open()` | ✅ 新建 fd | ❌ 不动 dirent | 打开一个文件，进程引用 inode |
+| `unlink()` | ❌ | ✅ 删除目录项 | 核心删除动作，本质上 `rm` 调的就是它 |
+
+* * *
+
+##  三、为什么会出现 `(deleted)`
+
+出现 `(deleted)` 的根本原因：
+
+> **文件的 dirent 被删除（unlink），但仍有进程持有对应的 fd 引用到该 inode。**
+
+因此：
+
+* 文件对普通用户不可见（ls 看不到）
+
+* 但文件内容仍在磁盘中（inode 和数据块仍存在）
+
+* `/proc/<pid>/fd` 里还能看到文件路径后缀 `(deleted)`
+
+* `lsof` 输出中就会显示：
+
+    ```
+    dockerd  1789  ...  /var/log/rsyslog.stderr.log (deleted)
+    ```
+
+
+* * *
+
+##  举个直观例子：
+
+```bash
+# 启动一个进程打开文件
+$ tail -f /var/log/syslog &
+[1] 1234
+
+# 删除文件
+$ rm /var/log/syslog
+$ ls /var/log/syslog
+ls: cannot access '/var/log/syslog': No such file or directory
+
+# 但查看打开的文件
+$ sudo lsof | grep syslog
+tail    1234  user  3r  REG  8,1  123456 /var/log/syslog (deleted)
+```
+
+此时：
+
+* `rm` 删除了目录项（dirent）
+
+* 进程 `tail` 仍持有文件描述符（fd）
+
+* 所以文件仍在占用空间，显示 `(deleted)`
+
+
+* * *
+
+##  四、什么时候空间真正释放？
+
+当且仅当：
+
+* 所有进程都关闭了该文件（`close(fd)`），
+    **且**
+
+* 没有任何目录项指向该 inode（`unlink()` 过）
+
+
+此时内核引用计数为 0，inode 才会被回收，磁盘空间真正释放。
+
+* * *
+
+##  总结成一句表格：
+
+| 操作 | 是否操作 fd | 是否操作 dirent | 是否导致 `(deleted)` |
+| --- | --- | --- | --- |
+| `rm file` | ❌ | ✅ 是 | ✅ 若仍被进程打开 |
+| `File.delete()` | ❌ | ✅ 是 | ✅ 若仍被进程打开 |
+| `fileinputstream.close()` | ✅ 是 | ❌ 否 | ❌ |
+| 程序退出 | ✅（系统关闭全部 fd） | ❌ 否 | ❌（inode 回收） |
+
+* * *
+
+##  最后一句话总结：
+
+> `(deleted)` 文件的本质是：
+> 文件“名字”没了（dirent 被删），
+> 但“内容”还活着（inode 仍被某个 fd 引用）。

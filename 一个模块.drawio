@@ -1,0 +1,266 @@
+<mxfile host="Electron" modified="2025-11-03T09:13:01.827Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.5.1 Chrome/112.0.5615.204 Electron/24.6.0 Safari/537.36" etag="NZYXHR-IJXKqptYOoeh2" version="21.5.1" type="device">
+  <diagram name="Page-1" id="Iz6igh_YrJvHAJ_P8_tn">
+    <mxGraphModel dx="1003485" dy="1978" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="999900" pageHeight="999900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="nY3fb8i55FktIAWoL_uP-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-2" target="nY3fb8i55FktIAWoL_uP-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-2" value="模块" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="640" y="280" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-3" value="接口" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="640" y="240" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-4" target="nY3fb8i55FktIAWoL_uP-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-4" value="DEV" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="400" y="280" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-5" value="TEST" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="880" y="280" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=18;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-7" target="nY3fb8i55FktIAWoL_uP-3">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="890" y="130" as="sourcePoint" />
+            <mxPoint x="730" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-7" value="依赖的模块" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="640" y="40" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;shape=flexArrow;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-16" target="nY3fb8i55FktIAWoL_uP-17">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="640" y="1100" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-28" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-16" target="nY3fb8i55FktIAWoL_uP-27">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-16" value="DEV" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1040" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;shape=flexArrow;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-17" target="nY3fb8i55FktIAWoL_uP-19">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-29" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-17" target="nY3fb8i55FktIAWoL_uP-26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-17" value="TEST" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="880" y="1040" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-18" value="模块" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="640" y="880" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;shape=flexArrow;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-19" target="nY3fb8i55FktIAWoL_uP-16">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="480" y="1050" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-19" target="nY3fb8i55FktIAWoL_uP-24">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-19" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 18px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(251, 251, 251); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;DEPLOY&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="640" y="680" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-24" value="接口" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="640" y="840" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-26" value="接口" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="800" y="880" width="40" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-27" value="接口" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="600" y="880" width="40" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-31" value="接口" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="380" y="570" width="50" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;shape=flexArrow;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-34" target="nY3fb8i55FktIAWoL_uP-37">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1400" y="1100" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-33" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-34" target="nY3fb8i55FktIAWoL_uP-44">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-34" value="DEV" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="1040" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-35" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;shape=flexArrow;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-37" target="nY3fb8i55FktIAWoL_uP-41">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-36" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-37" target="nY3fb8i55FktIAWoL_uP-43">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-37" value="TEST" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1640" y="1040" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-38" value="模块" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="880" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-39" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;shape=flexArrow;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-41" target="nY3fb8i55FktIAWoL_uP-34">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1240" y="1050" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-40" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-41" target="nY3fb8i55FktIAWoL_uP-42">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-41" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 18px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(251, 251, 251); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;DEPLOY&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="680" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-42" value="接口" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="840" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-43" value="接口" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1560" y="880" width="40" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-44" value="接口" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="880" width="40" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-46" value="先说开发依赖的接口" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1390" y="1210" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-47" value="没事儿别瞎改，不然牵一发而动全身，&lt;br&gt;程序边界一定明确，模块修改了需要复测，可能引入bug。接口的修改需要足够的理由（明确接口部分：约定，参数，返回值，依赖的框架接口（这部分很容易忽略））。两个分支修改冲突部分需要足够的理由。修改一个模块的同时修改另一个模块需要足够的理由。不要删除。别改名（改名=删除+新增）。&lt;br&gt;&lt;br&gt;没事儿别瞎改，一个模块意味着什么，为什么明确模块的边界是一个很重要的事情。&lt;br&gt;&lt;br&gt;" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="-280" y="1210" width="390" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-50" value="&lt;br style=&quot;border-color: var(--border-color);&quot;&gt;为什么代码“修改”是最应该避免的事情。为什么应该添加而不是修改和删除。" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1190" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-51" value="一个模块意味着什么，为什么明确模块的边界是一个很重要的事情。模块分为接口和实现。其中，最应该关注的是接口。" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1350" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-52" value="接口意味着约定。约定就一定涉及到同意该约定的各方。&lt;br&gt;&lt;br&gt;随意修改约定（没经过约定各方同意），可以视为违约。" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="590" y="1450" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-53" value="&lt;p data-end=&quot;108&quot; data-start=&quot;0&quot;&gt;&lt;strong data-end=&quot;26&quot; data-start=&quot;0&quot;&gt;违约（Breach of contract）&lt;/strong&gt; 是&lt;strong data-is-only-node=&quot;&quot; data-end=&quot;35&quot; data-start=&quot;28&quot;&gt;合同法&lt;/strong&gt;中的专有术语，指&lt;strong data-end=&quot;70&quot; data-start=&quot;43&quot;&gt;合同当事人一方或双方未履行合同条款中约定的义务&lt;/strong&gt;的情形。&lt;br data-end=&quot;77&quot; data-start=&quot;74&quot;&gt;&lt;br/&gt;例如：雇主拖欠工资、供应商不按约定交货、房地产项目烂尾等。&lt;/p&gt;&lt;br/&gt;&lt;p data-is-only-node=&quot;&quot; data-is-last-node=&quot;&quot; data-end=&quot;156&quot; data-start=&quot;110&quot;&gt;其法律后果取决于&lt;strong data-end=&quot;141&quot; data-start=&quot;118&quot;&gt;未履行义务是否可归责于当事人一方或双方&lt;/strong&gt;，即是否存在可归责的违约行为。&lt;/p&gt;" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="1570" width="400" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-54" value="&lt;b&gt;总之，违约会导致约定各方无法达到预期效果。在编程中，该接口往往意味着牵一发而动全身。一个模块接口修改，接口依赖方需要重新开发调试，复测，部署。&lt;/b&gt;" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="530" y="1780" width="400" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-55" value="&lt;b&gt;模块的接口按约定的不同方大致分为：开发、测试、部署&lt;/b&gt;" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="1900" width="400" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-56" value="很具体，就是编程接口，比如 HTTP api（url，参数，返回值）&lt;br&gt;，函数（名称，参数，返回值，异常），Context 中能提供的参数，不同线程之间交换数据的方式（文件，变量等等）" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="1300" width="290" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-57" value="改这部分东西会直接造成接口使用方重写。&lt;br&gt;&lt;br&gt;如果接口调用封装得很好，可以由接口的实现方直接提供外表不变的接口客户端。&lt;br&gt;&lt;br&gt;但是现实往往更复杂，因为接口往往没有清晰标识出来，比如context 中能提供的参数，这个版本能获取到参数a，下个版本可能就会拿到一个 null。线程之间的交互方式更是灾难，这部分只能依赖额外的内部开发文档说明标注，而就我工作过的公司而言，某个模块一般都是由一个人开发的，其内部实现可能就是开发者信手拈来，开发者走了，也就不知道为什么要这样设计了，文档更不可能，一个开发者一会儿要应付这个需求，一会要应付那个需求，根本没时间顾得上内部文档。函数，api还好定性，但就这，能好好写接口文档的我看也没几个人。接口调通了，跟前端测试口头说一下，要么就是边调边沟通，根本没有维护文档的习惯。boss都直接看程序跑没跑起来，功能有没有实现，文档如果公司没有规定，基本就是不可能有的。&lt;br&gt;&lt;br&gt;总之，现实和客观的因素下，接口文档总是匮乏的，我见过的都是靠开发者自身的素养。" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="1440" width="412.5" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-59" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;shape=flexArrow;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-61" target="nY3fb8i55FktIAWoL_uP-64">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="2280" y="1100" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-60" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-61" target="nY3fb8i55FktIAWoL_uP-71">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-61" value="DEV" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="2040" y="1040" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-62" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;shape=flexArrow;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-64" target="nY3fb8i55FktIAWoL_uP-68">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-63" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-64" target="nY3fb8i55FktIAWoL_uP-70">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-64" value="TEST" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="2520" y="1040" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-65" value="模块" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="2280" y="880" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-66" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;shape=flexArrow;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-68" target="nY3fb8i55FktIAWoL_uP-61">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="2120" y="1050" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-67" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-68" target="nY3fb8i55FktIAWoL_uP-69">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-68" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 18px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(251, 251, 251); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;DEPLOY&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="2280" y="680" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-69" value="接口" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="2280" y="840" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-70" value="接口" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="2440" y="880" width="40" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-71" value="接口" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="2240" y="880" width="40" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-72" value="再说说测试依赖的接口" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="2270" y="1210" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-73" value="我是负责偏上层的应用模块。比如UI，已经JAVA去调用底层封装好的模块去对外提供HTTP服务。所以就两块，界面UI以及HTTP接口。" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="2190" y="1300" width="290" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-74" value="修改这部分接口会影响到用户手册怎么编写，比如界面的这个按钮为什么这个版本有，而那个版本却没有，甚至有些页面的名称、布局更改了都会引起测试的询问：唉你这个地方为什么要这样改。&lt;br&gt;&lt;br&gt;总之这部分更多的是跟人打交道。只要你乐意不厌其烦地跟同时解释变更的原因，这部分应该不会是大问题。吧。&lt;br&gt;&lt;br&gt;现实中面对某个UI的各方可能包括：测试、你的boss、客户。应该没人会想跟这么多人多费口舌吧。" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="2190" y="1430" width="300" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-75" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;shape=flexArrow;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-77" target="nY3fb8i55FktIAWoL_uP-80">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="3120" y="1100" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-76" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-77" target="nY3fb8i55FktIAWoL_uP-87">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-77" value="DEV" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="2880" y="1040" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-78" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;shape=flexArrow;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-80" target="nY3fb8i55FktIAWoL_uP-84">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-79" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-80" target="nY3fb8i55FktIAWoL_uP-86">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-80" value="TEST" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="3360" y="1040" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-81" value="模块" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="3120" y="880" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-82" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;shape=flexArrow;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-84" target="nY3fb8i55FktIAWoL_uP-77">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="2960" y="1050" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-83" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="nY3fb8i55FktIAWoL_uP-84" target="nY3fb8i55FktIAWoL_uP-85">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-84" value="&lt;span style=&quot;color: rgb(0, 0, 0); font-family: Helvetica; font-size: 18px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(251, 251, 251); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;DEPLOY&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="3120" y="680" width="160" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-85" value="接口" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="3120" y="840" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-86" value="接口" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="3280" y="880" width="40" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-87" value="接口" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="3080" y="880" width="40" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-88" value="最后说说部署时候的接口" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="3110" y="1210" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-89" value="部署主要和生产环境有关，这部分接口的变更可能引起生产环境的变更。" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="3030" y="1300" width="290" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-90" value="生产环境说具体点，就是部署的机器是什么系统，系统所处的网络环境是怎么样的，系统中的什么位置应该有什么支撑性文件（否则程序起不来或者异常），系统上应该安装什么程序（作为子程序被调用），程序的启动参数怎么传递。" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="3030" y="1430" width="300" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-91" value="举个例子，springboot里面那个application.xml的所有参数，都属于部署接口一部分。或者程序需要读取什么环境变量，JVM参数（-D)，负责支撑这些的代码最好是写在一起，以划分接口边界。&lt;br&gt;&lt;br&gt;或者程序依赖什么文件，证书，那最好和上面一样写在一起，在某个阶段一起读取和处理。" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="3025" y="1580" width="300" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="nY3fb8i55FktIAWoL_uP-92" value="模块作为程序的管理单元，这里从模块的角度去尝试说明上面的问题。" style="whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1270" width="180" height="70" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
